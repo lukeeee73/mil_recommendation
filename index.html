@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>군입대 준비물 추천 🪖</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <span class="logo">🪖</span>
+      <h1>군입대 준비물 추천</h1>
+      <p class="subtitle">키·몸무게·예산을 입력하면 맞춤 준비물을 추천해드려요</p>
+    </div>
+  </header>
+
+  <main>
+    <!-- 입력 폼 -->
+    <section class="form-section card">
+      <h2>내 정보 입력</h2>
+      <form id="userForm">
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="height">키 (cm)</label>
+            <input type="number" id="height" min="140" max="220" placeholder="예: 175" required />
+          </div>
+          <div class="form-group">
+            <label for="weight">몸무게 (kg)</label>
+            <input type="number" id="weight" min="40" max="150" placeholder="예: 70" required />
+          </div>
+          <div class="form-group">
+            <label for="budget">예산 (원)</label>
+            <input type="number" id="budget" min="0" step="1000" placeholder="예: 50000" required />
+          </div>
+          <div class="form-group">
+            <label for="footSize">발 사이즈 (mm)</label>
+            <input type="number" id="footSize" min="220" max="300" placeholder="예: 270" required />
+          </div>
+        </div>
+
+        <div class="checkbox-group">
+          <p class="checkbox-label">특이사항 (해당 항목 선택)</p>
+          <div class="checkbox-grid">
+            <label class="checkbox-item">
+              <input type="checkbox" name="conditions" value="flatFoot" />
+              <span>평발</span>
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" name="conditions" value="kneeIssue" />
+              <span>무릎 통증</span>
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" name="conditions" value="backIssue" />
+              <span>허리 통증</span>
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" name="conditions" value="loudSnorer" />
+              <span>코골이</span>
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" name="conditions" value="lightSleeper" />
+              <span>예민한 수면</span>
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" name="conditions" value="dryEyes" />
+              <span>안구건조증</span>
+            </label>
+          </div>
+        </div>
+
+        <button type="submit" class="btn-primary">추천 받기</button>
+      </form>
+    </section>
+
+    <!-- 결과 섹션 -->
+    <section id="results" class="results-section hidden">
+      <div class="results-header">
+        <h2>맞춤 추천 결과</h2>
+        <div id="budgetSummary" class="budget-summary"></div>
+      </div>
+      <div id="resultCards" class="result-categories"></div>
+      <div id="budgetWarning" class="budget-warning hidden">
+        ⚠️ 예산이 부족합니다. 필수 품목 위주로 구매하거나 예산을 늘려보세요.
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>* 추천 가격은 예상 가격이며 실제 구매가와 다를 수 있습니다.</p>
+    <p>* 의료적 상태는 반드시 군의관과 상담하세요.</p>
+  </footer>
+
+  <script src="products.js"></script>
+  <script src="recommender.js"></script>
+</body>
+</html>
