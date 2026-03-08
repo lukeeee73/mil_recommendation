@@ -43,27 +43,27 @@
           <p class="checkbox-label">특이사항 (해당 항목 선택)</p>
           <div class="checkbox-grid">
             <label class="checkbox-item">
-              <input type="checkbox" name="conditions" value="flatFoot" />
+              <input type="checkbox" name="conditions" value="FlatFoot" />
               <span>평발</span>
             </label>
             <label class="checkbox-item">
-              <input type="checkbox" name="conditions" value="kneeIssue" />
+              <input type="checkbox" name="conditions" value="KneeIssue" />
               <span>무릎 통증</span>
             </label>
             <label class="checkbox-item">
-              <input type="checkbox" name="conditions" value="backIssue" />
+              <input type="checkbox" name="conditions" value="BackIssue" />
               <span>허리 통증</span>
             </label>
             <label class="checkbox-item">
-              <input type="checkbox" name="conditions" value="loudSnorer" />
+              <input type="checkbox" name="conditions" value="LoudSnorer" />
               <span>코골이</span>
             </label>
             <label class="checkbox-item">
-              <input type="checkbox" name="conditions" value="lightSleeper" />
+              <input type="checkbox" name="conditions" value="LightSleeper" />
               <span>예민한 수면</span>
             </label>
             <label class="checkbox-item">
-              <input type="checkbox" name="conditions" value="dryEyes" />
+              <input type="checkbox" name="conditions" value="DryEyes" />
               <span>안구건조증</span>
             </label>
           </div>
@@ -91,7 +91,9 @@
     <p>* 의료적 상태는 반드시 군의관과 상담하세요.</p>
   </footer>
 
-  <script src="products.js"></script>
-  <script src="recommender.js"></script>
+  <!-- 로드 순서: 온톨로지 → 추론엔진 → 앱 -->
+  <script src="ontology.js"></script>
+  <script src="reasoner.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>
