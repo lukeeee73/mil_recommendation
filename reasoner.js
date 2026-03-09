@@ -225,3 +225,8 @@ const BODY_LABEL = {
   Overweight:   "과체중",
   Obese:        "비만",
 };
+
+// Node.js 환경에서도 require()로 불러올 수 있도록
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = { Reasoner, KnowledgeBase, CATEGORY_META, CONDITION_LABEL, BODY_LABEL };
+}

@@ -1,0 +1,14 @@
+# 환경 변수 (API 키 포함 — 절대 올리지 않음)
+.env
+
+# Node.js 의존성 폴더
+node_modules/
+
+# 에디터 설정
+.vscode/
+.idea/
+*.swp
+
+# OS 파일
+.DS_Store
+Thumbs.db

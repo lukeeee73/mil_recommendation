@@ -437,6 +437,84 @@ main {
   white-space: nowrap;
 }
 
+/* 제품 이미지 (네이버 API 연동 시) */
+.product-card {
+  display: flex;
+  gap: 0;
+}
+
+.product-img {
+  width: 90px;
+  height: 90px;
+  object-fit: cover;
+  border-radius: 8px 0 0 8px;
+  flex-shrink: 0;
+  background: #f0f0f0;
+}
+
+.product-body {
+  flex: 1;
+  padding: 18px 24px;
+  min-width: 0;
+}
+
+.product-card:not(:has(.product-img)) .product-body {
+  padding: 18px 24px;
+}
+
+/* 브랜드명 */
+.product-brand {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  display: block;
+  margin-bottom: 2px;
+}
+
+/* 구매 버튼 */
+.product-price-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.btn-buy {
+  display: inline-block;
+  padding: 5px 12px;
+  background: var(--army-green);
+  color: white;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+
+.btn-buy:hover {
+  background: var(--army-green-light);
+}
+
+/* 출처 배지 (네이버 실시간 / 기본 가격) */
+.summary-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.source-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 99px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.source-naver   { background: #e6f7e6; color: #1a7a1a; border: 1px solid #a3d9a3; }
+.source-fallback { background: #f5f5f5; color: #888;   border: 1px solid #ddd; }
+
 /* =============================
    Footer
    ============================= */

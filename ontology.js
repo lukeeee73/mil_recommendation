@@ -97,12 +97,14 @@ const ONTOLOGY = {
     bmi:      { domain: "Person",  range: "xsd:float",   comment: "BMI 규칙으로 자동 계산" },
 
     // Product
-    productName: { domain: "Product", range: "xsd:string" },
-    price:       { domain: "Product", range: "xsd:integer", minInclusive: 0 },
-    description: { domain: "Product", range: "xsd:string" },
-    tags:        { domain: "Product", range: "xsd:string", isArray: true },
-    minFootSize: { domain: "Product", range: "xsd:integer" },
-    maxFootSize: { domain: "Product", range: "xsd:integer" },
+    productName:   { domain: "Product", range: "xsd:string" },
+    price:         { domain: "Product", range: "xsd:integer", minInclusive: 0 },
+    description:   { domain: "Product", range: "xsd:string" },
+    tags:          { domain: "Product", range: "xsd:string", isArray: true },
+    minFootSize:   { domain: "Product", range: "xsd:integer" },
+    maxFootSize:   { domain: "Product", range: "xsd:integer" },
+    searchKeyword: { domain: "Product", range: "xsd:string",
+                     comment: "네이버 쇼핑 검색 시 사용할 검색어" },
   },
 
   /* =========================================================
@@ -112,23 +114,25 @@ const ONTOLOGY = {
     // ── 깔창 (FootCare) ──────────────────────────────────────
     InsoleArcSupport: {
       type: "FootCare",
-      productName: "닥터숄 기능성 아치지지 깔창",
+      productName: "아치지지 깔창 (평발용)",
       price: 18000,
       hasPriority: "Essential",
       indicatedForCondition: ["FlatFoot"],
       description: "평발용 아치 지지 설계. 장거리 행군 시 발바닥 통증 완화.",
       tags: ["평발", "행군", "통증완화"],
       minFootSize: 220, maxFootSize: 300,
+      searchKeyword: "군화 깔창 평발 아치지지",
     },
     InsoleCushionStandard: {
       type: "FootCare",
-      productName: "에어워크 쿠션 군화 깔창",
+      productName: "쿠션 군화 깔창",
       price: 8000,
       hasPriority: "Essential",
       indicatedForCondition: [],
       description: "군화 전용 충격 흡수 깔창. 장시간 착용 피로도 감소.",
       tags: ["기본", "충격흡수"],
       minFootSize: 230, maxFootSize: 295,
+      searchKeyword: "군화 깔창 충격흡수",
     },
     InsoleGelPremium: {
       type: "FootCare",
@@ -139,17 +143,19 @@ const ONTOLOGY = {
       description: "젤 소재로 관절 충격 흡수 극대화. 무릎·허리 통증 예방.",
       tags: ["젤", "관절보호", "프리미엄"],
       minFootSize: 230, maxFootSize: 290,
+      searchKeyword: "젤 깔창 관절보호 충격흡수",
     },
 
     // ── 무릎 보호대 (KneeGuard) ──────────────────────────────
     KneeGuardBasic: {
       type: "KneeGuard",
-      productName: "맥다비드 기본 무릎 보호대",
+      productName: "기본 무릎 보호대",
       price: 15000,
       hasPriority: "Recommended",
       indicatedForCondition: ["KneeIssue"],
       description: "압박형 무릎 보호대. 훈련 중 무릎 안정화.",
       tags: ["무릎", "압박", "훈련"],
+      searchKeyword: "무릎 보호대 운동 훈련",
     },
     KneeGuardHinged: {
       type: "KneeGuard",
@@ -160,17 +166,19 @@ const ONTOLOGY = {
       indicatedForBodyCondition: ["Overweight", "Obese"],
       description: "힌지 구조로 강한 측면 지지력 제공. 심한 무릎 통증·과체중에 권장.",
       tags: ["힌지", "고급", "무릎통증"],
+      searchKeyword: "힌지 무릎 보호대 관절 지지",
     },
 
     // ── 허리 보호대 (BackSupport) ────────────────────────────
     BackSupportBasic: {
       type: "BackSupport",
-      productName: "허리 복대 (기본형)",
+      productName: "허리 복대 보호대",
       price: 12000,
       hasPriority: "Recommended",
       indicatedForCondition: ["BackIssue"],
       description: "훈련 및 무거운 군장 착용 시 허리 지지.",
       tags: ["허리", "군장", "복대"],
+      searchKeyword: "허리 복대 보호대 운동",
     },
     BackSupportPremium: {
       type: "BackSupport",
@@ -180,26 +188,29 @@ const ONTOLOGY = {
       indicatedForCondition: ["BackIssue"],
       description: "의료용 등급 요추 지지. 디스크 예방 효과.",
       tags: ["의료용", "요추", "디스크"],
+      searchKeyword: "의료용 요추 보호대 허리디스크",
     },
 
     // ── 귀마개 (Earplug) ─────────────────────────────────────
     EarplugFoam: {
       type: "Earplug",
-      productName: "3M 스탠다드 폼 귀마개 (20개입)",
+      productName: "폼 귀마개 소음차단 (다량입)",
       price: 5000,
       hasPriority: "Essential",
       indicatedForCondition: [],
-      description: "SNR 37dB 차음. 사격 훈련·취침 시 필수.",
+      description: "고차음 폼 귀마개. 사격 훈련·취침 시 필수.",
       tags: ["사격", "소음차단", "기본"],
+      searchKeyword: "귀마개 소음차단 폼 사격",
     },
     EarplugSilicone: {
       type: "Earplug",
-      productName: "수면 전용 실리콘 귀마개",
+      productName: "수면용 실리콘 귀마개",
       price: 9000,
       hasPriority: "Recommended",
       indicatedForCondition: ["LoudSnorer", "LightSleeper"],
       description: "부드러운 실리콘 소재로 장시간 착용 편안. 코골이 차단.",
       tags: ["수면", "실리콘", "코골이"],
+      searchKeyword: "수면 귀마개 실리콘 코골이 차단",
     },
     EarplugFilter: {
       type: "Earplug",
@@ -209,17 +220,19 @@ const ONTOLOGY = {
       indicatedForCondition: ["LightSleeper"],
       description: "필터 방식 선택적 소음 차단. 위험 소리는 인지 가능.",
       tags: ["재사용", "필터", "스마트"],
+      searchKeyword: "필터 귀마개 재사용 소음 선택차단",
     },
 
     // ── 눈 관리 (EyeCare / EyeMask) ─────────────────────────
     EyeDrops: {
       type: "EyeCare",
-      productName: "히알루론산 인공눈물 (30개입)",
+      productName: "히알루론산 인공눈물 (단회용)",
       price: 12000,
       hasPriority: "Essential",
       indicatedForCondition: ["DryEyes"],
       description: "보존제 없는 단회용 인공눈물. 건조한 막사 환경 대응.",
       tags: ["인공눈물", "안구건조", "보습"],
+      searchKeyword: "인공눈물 히알루론산 단회용 안구건조",
     },
     EyeMaskSleep: {
       type: "EyeMask",
@@ -229,55 +242,61 @@ const ONTOLOGY = {
       indicatedForCondition: ["LightSleeper"],
       description: "눈 압박 없는 3D 구조. 빛 차단으로 숙면 도움.",
       tags: ["안대", "수면", "빛차단"],
+      searchKeyword: "3D 수면 안대 빛차단 숙면",
     },
 
     // ── 피부 관리 (SkinCare) ─────────────────────────────────
     Sunscreen: {
       type: "SkinCare",
-      productName: "선크림 SPF50+ (100ml)",
+      productName: "선크림 SPF50+ 워터프루프",
       price: 13000,
       hasPriority: "Essential",
       indicatedForCondition: [],
       description: "야외 훈련 시 자외선 차단 필수. 땀에 강한 워터프루프 타입.",
       tags: ["선크림", "야외훈련", "자외선"],
+      searchKeyword: "선크림 SPF50 워터프루프 야외활동",
     },
     LipBalm: {
       type: "SkinCare",
-      productName: "바세린 립밤",
+      productName: "보습 립밤",
       price: 4000,
       hasPriority: "Recommended",
       indicatedForCondition: [],
       description: "건조한 환경에서 입술 보호. 소형으로 휴대 편리.",
       tags: ["립밤", "보습", "소형"],
+      searchKeyword: "립밤 보습 촉촉 입술보호",
     },
     Lotion: {
       type: "SkinCare",
-      productName: "무향 보습 로션 (200ml)",
+      productName: "무향 보습 로션",
       price: 8000,
       hasPriority: "Recommended",
       indicatedForCondition: [],
       description: "군 생활 중 피부 보습. 향이 없어 단체 생활에 적합.",
       tags: ["로션", "보습", "무향"],
+      searchKeyword: "무향 보습 로션 피부 건조",
     },
 
     // ── 문구 (Stationery) ────────────────────────────────────
     WaterproofNotebook: {
       type: "Stationery",
-      productName: "군용 전술 노트 (방수)",
+      productName: "방수 소형 노트",
       price: 6000,
       hasPriority: "Recommended",
       indicatedForCondition: [],
       description: "방수 처리된 소형 노트. 야외에서도 메모 가능.",
       tags: ["노트", "방수", "메모"],
+      searchKeyword: "방수 노트 소형 야외 메모",
     },
     PenSet: {
       type: "Stationery",
-      productName: "볼펜 세트 (10자루)",
+      productName: "볼펜 세트",
       price: 3000,
       hasPriority: "Essential",
       indicatedForCondition: [],
       description: "각종 서류 작성용. 여유 있게 챙겨야 합니다.",
       tags: ["볼펜", "서류", "필수"],
+      searchKeyword: "볼펜 세트 10개입",
     },
     NailClipper: {
       type: "Stationery",
@@ -287,36 +306,40 @@ const ONTOLOGY = {
       indicatedForCondition: [],
       description: "손·발톱 정기 관리 필수. 세트 구성으로 편리.",
       tags: ["위생", "필수", "관리"],
+      searchKeyword: "손발톱 깎이 세트 위생",
     },
 
     // ── 건강보조식품 (HealthSupplement) ─────────────────────
     VitaminC: {
       type: "HealthSupplement",
-      productName: "비타민 C 1000mg (30정)",
+      productName: "비타민 C 1000mg",
       price: 8000,
       hasPriority: "Recommended",
       indicatedForCondition: [],
       description: "면역력 강화. 훈련으로 체력 소모가 많을 때 도움.",
       tags: ["비타민", "면역", "건강"],
+      searchKeyword: "비타민C 1000mg 면역력 영양제",
     },
     GlucosamineSupplement: {
       type: "HealthSupplement",
-      productName: "글루코사민 관절 영양제 (30정)",
+      productName: "글루코사민 관절 영양제",
       price: 15000,
       hasPriority: "Recommended",
       indicatedForCondition: ["KneeIssue", "BackIssue"],
       description: "관절 연골 보호. 장거리 행군 전 복용 권장.",
       tags: ["관절", "글루코사민", "행군"],
+      searchKeyword: "글루코사민 관절 영양제 연골",
     },
     ProteinPowder: {
       type: "HealthSupplement",
-      productName: "단백질 보충제 (1kg)",
+      productName: "단백질 보충제",
       price: 35000,
       hasPriority: "Optional",
       indicatedForCondition: [],
       indicatedForBodyCondition: ["Underweight"],
       description: "훈련 후 근육 회복 촉진. 저체중 훈련병에게 특히 권장.",
       tags: ["단백질", "근육", "회복"],
+      searchKeyword: "단백질 보충제 프로틴 근육 회복",
     },
   },
 
@@ -410,3 +433,9 @@ const ONTOLOGY = {
     },
   ],
 };
+
+// Node.js 환경에서도 require()로 불러올 수 있도록
+// 브라우저에서는 이 줄이 무시됨
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = { ONTOLOGY };
+}
