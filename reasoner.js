@@ -202,8 +202,10 @@ var CATEGORY_META = {
   LetterWriting:    { label: "편지 / 소통",       icon: "💌" },
   Stationery:       { label: "문구 / 필기",       icon: "✏️" },
   HealthSupplement: { label: "건강보조식품",       icon: "💪" },
-  WinterGear:       { label: "방한용품 (겨울)",    icon: "🧣" },
-  SummerGear:       { label: "여름용품",           icon: "☀️" },
+  SpringGear:       { label: "봄용품 (3~5월)",      icon: "🌸" },
+  SummerGear:       { label: "여름용품 (6~8월)",    icon: "☀️" },
+  FallGear:         { label: "가을용품 (9~11월)",   icon: "🍂" },
+  WinterGear:       { label: "방한용품 (12~2월)",   icon: "🧣" },
   Convenience:      { label: "편의용품",           icon: "🔧" },
   Snacks:           { label: "간식 / 식품",        icon: "🍫" },
   MentalHealth:     { label: "정신건강 / 취미",    icon: "📖" },
@@ -226,8 +228,10 @@ var CONDITION_LABEL = {
 };
 
 var SITUATION_LABEL = {
-  WinterEnlistment: "겨울입대",
+  SpringEnlistment: "봄입대",
   SummerEnlistment: "여름입대",
+  FallEnlistment:   "가을입대",
+  WinterEnlistment: "겨울입대",
   HasGirlfriend:    "여자친구있음",
 };
 

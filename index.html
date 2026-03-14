@@ -23,33 +23,41 @@
         <div class="form-grid">
           <div class="form-group">
             <label for="height">키 (cm)</label>
-            <input type="number" id="height" min="140" max="220" placeholder="예: 175" required />
+            <input type="number" id="height" min="140" max="220" step="any" placeholder="예: 175" required />
           </div>
           <div class="form-group">
             <label for="weight">몸무게 (kg)</label>
-            <input type="number" id="weight" min="40" max="150" placeholder="예: 70" required />
+            <input type="number" id="weight" min="40" max="150" step="any" placeholder="예: 70" required />
           </div>
           <div class="form-group">
             <label for="budget">예산 (원)</label>
-            <input type="number" id="budget" min="0" step="1000" placeholder="예: 200000" required />
+            <input type="number" id="budget" min="0" step="any" placeholder="예: 200000" required />
           </div>
           <div class="form-group">
             <label for="footSize">발 사이즈 (mm)</label>
-            <input type="number" id="footSize" min="220" max="300" placeholder="예: 270" required />
+            <input type="number" id="footSize" min="220" max="300" step="any" placeholder="예: 270" required />
           </div>
         </div>
 
         <!-- 입대 시기 -->
         <div class="checkbox-group">
           <p class="checkbox-label">입대 시기</p>
-          <div class="checkbox-grid season-grid">
+          <div class="checkbox-grid quarter-grid">
+            <label class="checkbox-item">
+              <input type="radio" name="season" value="SpringEnlistment" />
+              <span>봄 (3~5월)</span>
+            </label>
             <label class="checkbox-item">
               <input type="radio" name="season" value="SummerEnlistment" />
-              <span>여름 입대 (4~9월)</span>
+              <span>여름 (6~8월)</span>
+            </label>
+            <label class="checkbox-item">
+              <input type="radio" name="season" value="FallEnlistment" />
+              <span>가을 (9~11월)</span>
             </label>
             <label class="checkbox-item">
               <input type="radio" name="season" value="WinterEnlistment" />
-              <span>겨울 입대 (10~3월)</span>
+              <span>겨울 (12~2월)</span>
             </label>
           </div>
         </div>
