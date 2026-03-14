@@ -1,12 +1,10 @@
 /**
- * ontology.js — 군입대 준비물 추천 온톨로지
+ * ontology.js — 군입대 준비물 체크리스트 온톨로지 (MVP)
  *
- * 구조:
- *  classes      : 개념 계층 (Thing > Person > MilitaryRecruit 등)
- *  objectProperties : 개체 간 관계 (domain/range/inverseOf)
- *  dataProperties   : 개체-값 관계 (domain/range/restrictions)
- *  individuals  : 명명된 개체 (제품 인스턴스)
- *  rules        : 추론 규칙 (SWRL 스타일, JS 함수로 표현)
+ * MVP 방향:
+ *  - 실제 제품 추천이 아닌, "어떤 준비물을 챙겨야 하는지" 알려주는 체크리스트
+ *  - 개인 상황(계절, 건강상태, 여자친구 유무 등)에 따라 맞춤 추천
+ *  - 예상 가격대만 제공 (실제 쇼핑몰 연동 없음)
  */
 
 const ONTOLOGY = {
@@ -19,9 +17,9 @@ const ONTOLOGY = {
 
     // 사람
     Person:           { superClass: "Thing" },
-    MilitaryRecruit:  { superClass: "Person" },  // 입대 예정자
+    MilitaryRecruit:  { superClass: "Person" },
 
-    // 신체 상태 (BMI 기반 추론)
+    // 신체 상태 (BMI 기반)
     BodyCondition:    { superClass: "Thing" },
     Underweight:      { superClass: "BodyCondition" },
     NormalWeight:     { superClass: "BodyCondition" },
@@ -36,10 +34,27 @@ const ONTOLOGY = {
     LoudSnorer:       { superClass: "HealthCondition" },
     LightSleeper:     { superClass: "HealthCondition" },
     DryEyes:          { superClass: "HealthCondition" },
+    SensitiveSkin:    { superClass: "HealthCondition" },
+    SweatyFeet:       { superClass: "HealthCondition" },
+    WeakStomach:      { superClass: "HealthCondition" },
+    Acne:             { superClass: "HealthCondition" },
+    WearsGlasses:     { superClass: "HealthCondition" },
+    FrequentCramps:   { superClass: "HealthCondition" },
+    Allergies:        { superClass: "HealthCondition" },
+
+    // 상황 조건
+    SituationCondition: { superClass: "Thing" },
+    WinterEnlistment:   { superClass: "SituationCondition" },
+    SummerEnlistment:   { superClass: "SituationCondition" },
+    HasGirlfriend:      { superClass: "SituationCondition" },
 
     // 제품 분류
     Product:          { superClass: "Thing" },
-    FootCare:         { superClass: "Product" },   // 깔창
+    BasicLiving:      { superClass: "Product" },   // 기본 생활용품
+    Hygiene:          { superClass: "Product" },   // 위생용품
+    Medicine:         { superClass: "Product" },   // 의약품
+    FootCare:         { superClass: "Product" },   // 발 관리
+    SkinCare:         { superClass: "Product" },   // 피부 관리
     JointProtection:  { superClass: "Product" },   // 관절 보호
     KneeGuard:        { superClass: "JointProtection" },
     BackSupport:      { superClass: "JointProtection" },
@@ -47,395 +62,1327 @@ const ONTOLOGY = {
     Earplug:          { superClass: "SleepAid" },
     EyeMask:          { superClass: "SleepAid" },
     EyeCare:          { superClass: "Product" },   // 눈 관리
-    SkinCare:         { superClass: "Product" },   // 피부 관리
-    Stationery:       { superClass: "Product" },   // 문구
-    HealthSupplement: { superClass: "Product" },   // 건강보조
+    LetterWriting:    { superClass: "Product" },   // 편지/소통
+    Stationery:       { superClass: "Product" },   // 문구/필기
+    HealthSupplement: { superClass: "Product" },   // 건강보조식품
+    WinterGear:       { superClass: "Product" },   // 방한용품
+    SummerGear:       { superClass: "Product" },   // 여름용품
+    Convenience:      { superClass: "Product" },   // 편의용품
+    Snacks:           { superClass: "Product" },   // 간식/식품
+    MentalHealth:     { superClass: "Product" },   // 정신건강/취미
 
     // 우선도
     PriorityLevel:    { superClass: "Thing" },
-    Essential:        { superClass: "PriorityLevel" },   // 필수
-    Recommended:      { superClass: "PriorityLevel" },   // 추천
-    Optional:         { superClass: "PriorityLevel" },   // 선택
+    Essential:        { superClass: "PriorityLevel" },
+    Recommended:      { superClass: "PriorityLevel" },
+    Optional:         { superClass: "PriorityLevel" },
   },
 
   /* =========================================================
-     2. 객체 속성 (Object Properties)
+     2. 객체 속성
      ========================================================= */
   objectProperties: {
-    // Person ←→ Condition
-    hasHealthCondition: { domain: "Person",  range: "HealthCondition" },
-    hasBodyCondition:   { domain: "Person",  range: "BodyCondition",
-                          comment: "BMI 규칙으로 자동 추론됨" },
-
-    // Product ← 관계
+    hasHealthCondition: { domain: "Person", range: "HealthCondition" },
+    hasBodyCondition:   { domain: "Person", range: "BodyCondition" },
+    hasSituation:       { domain: "Person", range: "SituationCondition" },
     hasPriority:        { domain: "Product", range: "PriorityLevel" },
-    indicatedForCondition: {
-      domain: "Product", range: "HealthCondition",
-      comment: "이 제품이 특히 권장되는 건강 상태",
-    },
-    indicatedForBodyCondition: {
-      domain: "Product", range: "BodyCondition",
-    },
-    productType:        { domain: "Product", range: "Product",
-                          comment: "개체가 속하는 제품 클래스" },
-
-    // 추천 관계 (추론 결과로 생성)
-    isRecommendedTo: { domain: "Product", range: "Person",
-                       inverseOf: "hasRecommendation" },
-    hasRecommendation: { domain: "Person",  range: "Product" },
+    indicatedForCondition: { domain: "Product", range: "HealthCondition" },
+    indicatedForBodyCondition: { domain: "Product", range: "BodyCondition" },
+    indicatedForSituation: { domain: "Product", range: "SituationCondition" },
+    isRecommendedTo: { domain: "Product", range: "Person", inverseOf: "hasRecommendation" },
+    hasRecommendation: { domain: "Person", range: "Product" },
   },
 
   /* =========================================================
-     3. 데이터 속성 (Data Properties)
+     3. 데이터 속성
      ========================================================= */
   dataProperties: {
-    // Person
-    height:   { domain: "Person",  range: "xsd:float",   minInclusive: 140, maxInclusive: 220 },
-    weight:   { domain: "Person",  range: "xsd:float",   minInclusive: 40,  maxInclusive: 150 },
-    footSize: { domain: "Person",  range: "xsd:integer", minInclusive: 220, maxInclusive: 300 },
-    budget:   { domain: "Person",  range: "xsd:float",   minInclusive: 0 },
-    bmi:      { domain: "Person",  range: "xsd:float",   comment: "BMI 규칙으로 자동 계산" },
-
-    // Product
+    height:   { domain: "Person", range: "xsd:float", minInclusive: 140, maxInclusive: 220 },
+    weight:   { domain: "Person", range: "xsd:float", minInclusive: 40, maxInclusive: 150 },
+    footSize: { domain: "Person", range: "xsd:integer", minInclusive: 220, maxInclusive: 300 },
+    budget:   { domain: "Person", range: "xsd:float", minInclusive: 0 },
+    bmi:      { domain: "Person", range: "xsd:float" },
     productName:   { domain: "Product", range: "xsd:string" },
     price:         { domain: "Product", range: "xsd:integer", minInclusive: 0 },
+    priceRange:    { domain: "Product", range: "xsd:string", comment: "예상 가격대 문자열" },
     description:   { domain: "Product", range: "xsd:string" },
+    tip:           { domain: "Product", range: "xsd:string", comment: "꿀팁/추가 정보" },
     tags:          { domain: "Product", range: "xsd:string", isArray: true },
-    minFootSize:   { domain: "Product", range: "xsd:integer" },
-    maxFootSize:   { domain: "Product", range: "xsd:integer" },
-    searchKeyword: { domain: "Product", range: "xsd:string",
-                     comment: "네이버 쇼핑 검색 시 사용할 검색어" },
+    quantity:      { domain: "Product", range: "xsd:string", comment: "권장 수량" },
   },
 
   /* =========================================================
-     4. 명명된 개체 (Named Individuals — 제품 목록)
+     4. 명명된 개체 (Named Individuals — 준비물 목록)
      ========================================================= */
   individuals: {
-    // ── 깔창 (FootCare) ──────────────────────────────────────
+
+    // ══════════════════════════════════════════════════════════
+    //  기본 생활용품 (BasicLiving)
+    // ══════════════════════════════════════════════════════════
+    Towels: {
+      type: "BasicLiving",
+      productName: "수건",
+      price: 10000,
+      priceRange: "5,000~15,000원",
+      hasPriority: "Essential",
+      indicatedForCondition: [],
+      description: "세면·샤워·훈련 후 사용. 빨리 마르는 극세사 소재 추천.",
+      tip: "최소 3장 이상 준비. 빨래 후 건조 시간을 고려하면 넉넉할수록 좋음.",
+      tags: ["세면", "필수", "극세사"],
+      quantity: "3~5장",
+    },
+    Underwear: {
+      type: "BasicLiving",
+      productName: "속옷 (면 소재)",
+      price: 20000,
+      priceRange: "15,000~30,000원 (5벌 기준)",
+      hasPriority: "Essential",
+      indicatedForCondition: [],
+      description: "면 소재 권장. 군에서 지급하지만 개인 속옷이 편함.",
+      tip: "검정 또는 군녹색 위주. 화려한 색상은 피할 것.",
+      tags: ["의류", "면소재", "필수"],
+      quantity: "5~7벌",
+    },
+    Socks: {
+      type: "BasicLiving",
+      productName: "양말 (기능성/면)",
+      price: 15000,
+      priceRange: "10,000~20,000원 (5켤레 기준)",
+      hasPriority: "Essential",
+      indicatedForCondition: [],
+      description: "두꺼운 면양말 또는 기능성 양말. 군화와 함께 발 보호 핵심.",
+      tip: "발에 땀이 많으면 항균 기능성 양말 추천. 행군용은 두꺼운 쿠션양말이 좋음.",
+      tags: ["의류", "발관리", "필수"],
+      quantity: "5~7켤레",
+    },
+    ToothbrushSet: {
+      type: "BasicLiving",
+      productName: "칫솔 + 치약 세트",
+      price: 5000,
+      priceRange: "3,000~8,000원",
+      hasPriority: "Essential",
+      indicatedForCondition: [],
+      description: "여분 칫솔 포함 세트로 준비. 치약은 소형으로.",
+      tip: "칫솔은 최소 2개 준비. PX에서도 구매 가능하지만 입대 초기엔 여유 없음.",
+      tags: ["세면", "위생", "필수"],
+      quantity: "칫솔 2~3개 + 치약 1~2개",
+    },
+    ShampooBodywash: {
+      type: "BasicLiving",
+      productName: "샴푸 + 바디워시 (소형)",
+      price: 8000,
+      priceRange: "5,000~12,000원",
+      hasPriority: "Essential",
+      indicatedForCondition: [],
+      description: "휴대용 소형으로 준비. 올인원 제품도 편리.",
+      tip: "큰 용기는 불편함. 100~200ml 소형 또는 올인원 추천. 리필용 파우치도 좋음.",
+      tags: ["세면", "소형", "필수"],
+      quantity: "각 1~2개",
+    },
+    LaundrySupplies: {
+      type: "BasicLiving",
+      productName: "빨래비누 / 세탁세제",
+      price: 5000,
+      priceRange: "3,000~8,000원",
+      hasPriority: "Essential",
+      indicatedForCondition: [],
+      description: "손빨래용 세탁비누 필수. 세탁기 사용 시 소량 세제도.",
+      tip: "빨래비누 1~2개면 한 달은 충분. 액체세제보다 고체비누가 군 생활에 실용적.",
+      tags: ["빨래", "생활", "필수"],
+      quantity: "1~2개",
+    },
+    ClothesHangers: {
+      type: "BasicLiving",
+      productName: "접이식 옷걸이",
+      price: 5000,
+      priceRange: "3,000~7,000원",
+      hasPriority: "Recommended",
+      indicatedForCondition: [],
+      description: "빨래 건조용. 접이식이면 공간 절약.",
+      tip: "빨래줄 + 집게와 함께 세트로 준비하면 편리.",
+      tags: ["빨래", "건조", "생활"],
+      quantity: "5~10개",
+    },
+    WetWipes: {
+      type: "BasicLiving",
+      productName: "물티슈",
+      price: 5000,
+      priceRange: "3,000~8,000원",
+      hasPriority: "Essential",
+      indicatedForCondition: [],
+      description: "야외 훈련 시 세면 대용. 다용도로 유용.",
+      tip: "훈련 중 샤워 불가 시 필수. 대용량 + 휴대용 분리 추천.",
+      tags: ["위생", "훈련", "다용도"],
+      quantity: "대용량 1팩 + 휴대용 3~5팩",
+    },
+    PocketTissue: {
+      type: "BasicLiving",
+      productName: "포켓 휴지",
+      price: 3000,
+      priceRange: "2,000~5,000원",
+      hasPriority: "Essential",
+      indicatedForCondition: [],
+      description: "주머니에 넣고 다니는 소형 휴지. 항상 필요.",
+      tip: "화장실 휴지가 부족한 경우 대비. 넉넉하게 준비.",
+      tags: ["위생", "휴대", "필수"],
+      quantity: "10팩 이상",
+    },
+    CottonSwabs: {
+      type: "BasicLiving",
+      productName: "면봉",
+      price: 2000,
+      priceRange: "1,000~3,000원",
+      hasPriority: "Recommended",
+      indicatedForCondition: [],
+      description: "귀 청소, 상처 소독 등 다용도.",
+      tags: ["위생", "다용도"],
+      quantity: "1팩 (100개입)",
+    },
+    ZipperBags: {
+      type: "BasicLiving",
+      productName: "지퍼백 (다용도 방수)",
+      price: 3000,
+      priceRange: "2,000~5,000원",
+      hasPriority: "Recommended",
+      indicatedForCondition: [],
+      description: "습기 방지, 소지품 정리, 방수 보관 필수 아이템.",
+      tip: "여러 사이즈 섞어서 준비. 폰·지갑 방수 보관, 젖은 옷 분리 등 활용도 높음.",
+      tags: ["정리", "방수", "다용도"],
+      quantity: "대·소 각 10장 이상",
+    },
+
+    // ══════════════════════════════════════════════════════════
+    //  위생용품 (Hygiene)
+    // ══════════════════════════════════════════════════════════
+    NailClipperSet: {
+      type: "Hygiene",
+      productName: "손발톱 깎이 세트",
+      price: 5000,
+      priceRange: "3,000~8,000원",
+      hasPriority: "Essential",
+      indicatedForCondition: [],
+      description: "손톱·발톱 정기 관리 필수. 세트 구성이 편리.",
+      tip: "발톱 깎이는 크기가 좀 큰 것이 발톱 깎기 편함.",
+      tags: ["위생", "관리", "필수"],
+      quantity: "1세트",
+    },
+    RazorSet: {
+      type: "Hygiene",
+      productName: "면도기 + 면도크림",
+      price: 10000,
+      priceRange: "5,000~15,000원",
+      hasPriority: "Essential",
+      indicatedForCondition: [],
+      description: "매일 면도 필수. 일반 면도기(전기면도기 불가하는 부대 있음).",
+      tip: "일회용보단 교체날 면도기가 경제적. 면도크림/폼은 소형 준비.",
+      tags: ["면도", "위생", "매일"],
+      quantity: "면도기 1개 + 교체날 여분 + 면도크림 1개",
+    },
+    EarPick: {
+      type: "Hygiene",
+      productName: "귀이개",
+      price: 2000,
+      priceRange: "1,000~3,000원",
+      hasPriority: "Recommended",
+      indicatedForCondition: [],
+      description: "면봉 대신 귀이개 선호하는 경우.",
+      tags: ["위생", "관리"],
+      quantity: "1개",
+    },
+    Deodorant: {
+      type: "Hygiene",
+      productName: "데오드란트 / 제한제",
+      price: 8000,
+      priceRange: "5,000~12,000원",
+      hasPriority: "Recommended",
+      indicatedForCondition: [],
+      description: "단체 생활에서 체취 관리. 무향 또는 약한 향 권장.",
+      tip: "스프레이보다 롤온/스틱 타입이 군 생활에 적합.",
+      tags: ["위생", "체취", "단체생활"],
+      quantity: "1개",
+    },
+
+    // ══════════════════════════════════════════════════════════
+    //  의약품 (Medicine)
+    // ══════════════════════════════════════════════════════════
+    Digestive: {
+      type: "Medicine",
+      productName: "소화제",
+      price: 5000,
+      priceRange: "3,000~8,000원",
+      hasPriority: "Essential",
+      indicatedForCondition: ["WeakStomach"],
+      description: "급식 적응기 소화불량 대비. 체하거나 속이 더부룩할 때.",
+      tip: "까스활명수, 훼스탈 등 익숙한 소화제로 준비.",
+      tags: ["소화", "급식", "필수"],
+      quantity: "1~2통",
+    },
+    Painkiller: {
+      type: "Medicine",
+      productName: "진통제 / 두통약",
+      price: 5000,
+      priceRange: "3,000~7,000원",
+      hasPriority: "Essential",
+      indicatedForCondition: [],
+      description: "두통·치통·근육통 응급 대비. 의무실 가기 전 임시 대응.",
+      tip: "타이레놀, 이지엔6 등. 의무실 약 받기 전 급할 때 유용.",
+      tags: ["진통", "응급", "필수"],
+      quantity: "1통",
+    },
+    ColdMedicine: {
+      type: "Medicine",
+      productName: "종합감기약",
+      price: 6000,
+      priceRange: "4,000~8,000원",
+      hasPriority: "Essential",
+      indicatedForCondition: [],
+      description: "감기 초기 증상 대응. 단체생활에서 감기 전파 빠름.",
+      tip: "판콜에이, 콘택600 등. 의무실 가기 전 초기 대응용.",
+      tags: ["감기", "면역", "필수"],
+      quantity: "1통",
+    },
+    Bandages: {
+      type: "Medicine",
+      productName: "밴드 / 반창고",
+      price: 3000,
+      priceRange: "2,000~5,000원",
+      hasPriority: "Essential",
+      indicatedForCondition: [],
+      description: "작은 상처·물집 즉시 처리. 훈련 중 필수.",
+      tip: "방수 밴드 추천. 발뒤꿈치 물집용 대형 사이즈도 함께.",
+      tags: ["상처", "물집", "훈련"],
+      quantity: "2~3팩",
+    },
+    FootFungusOintment: {
+      type: "Medicine",
+      productName: "무좀약 / 발 크림",
+      price: 8000,
+      priceRange: "5,000~12,000원",
+      hasPriority: "Recommended",
+      indicatedForCondition: ["SweatyFeet"],
+      description: "군화 장시간 착용 시 무좀 예방·치료.",
+      tip: "예방 차원에서도 준비 권장. 발에 땀이 많으면 필수.",
+      tags: ["무좀", "발관리", "예방"],
+      quantity: "1개",
+    },
+    MusclePatch: {
+      type: "Medicine",
+      productName: "파스 / 근육통 패치",
+      price: 8000,
+      priceRange: "5,000~12,000원",
+      hasPriority: "Essential",
+      indicatedForCondition: ["KneeIssue", "BackIssue"],
+      description: "훈련 후 근육통 완화. 붙이는 파스 + 바르는 파스 둘 다 유용.",
+      tip: "살로파스, 케토톱 등. 핫타입/쿨타입 취향에 맞게.",
+      tags: ["근육통", "훈련", "통증완화"],
+      quantity: "2~3팩",
+    },
+    WoundOintment: {
+      type: "Medicine",
+      productName: "상처 연고 + 소독약",
+      price: 8000,
+      priceRange: "5,000~12,000원",
+      hasPriority: "Recommended",
+      indicatedForCondition: [],
+      description: "찰과상·긁힌 상처 치료용. 소독 + 연고 세트.",
+      tip: "마데카솔, 후시딘 + 과산화수소 소독액. 면봉과 함께 사용.",
+      tags: ["상처", "소독", "연고"],
+      quantity: "연고 1개 + 소독약 1개",
+    },
+    InsectBiteOintment: {
+      type: "Medicine",
+      productName: "벌레물림 연고",
+      price: 5000,
+      priceRange: "3,000~7,000원",
+      hasPriority: "Recommended",
+      indicatedForCondition: [],
+      indicatedForSituation: ["SummerEnlistment"],
+      description: "모기·벌레 물린 데 바르는 연고.",
+      tip: "여름 입대 시 필수. 물파스도 유용.",
+      tags: ["벌레", "가려움", "여름"],
+      quantity: "1개",
+    },
+    AntidiarrhealMedicine: {
+      type: "Medicine",
+      productName: "지사제 / 설사약",
+      price: 5000,
+      priceRange: "3,000~7,000원",
+      hasPriority: "Recommended",
+      indicatedForCondition: ["WeakStomach"],
+      description: "급식이나 물 바뀌어 배탈 날 때 대비.",
+      tip: "스멕타, 정로환 등. 소화가 약한 사람은 필수.",
+      tags: ["배탈", "소화", "응급"],
+      quantity: "1통",
+    },
+    MouthUlcerMedicine: {
+      type: "Medicine",
+      productName: "구내염 약 / 패치",
+      price: 5000,
+      priceRange: "3,000~8,000원",
+      hasPriority: "Optional",
+      indicatedForCondition: [],
+      description: "스트레스·면역 저하 시 구내염 발생 대비.",
+      tip: "오라메디, 알보칠 등. 스트레스 받으면 잘 생기는 편이면 준비.",
+      tags: ["구내염", "스트레스", "면역"],
+      quantity: "1개",
+    },
+    AllergyMedicine: {
+      type: "Medicine",
+      productName: "알레르기약 / 항히스타민제",
+      price: 6000,
+      priceRange: "4,000~8,000원",
+      hasPriority: "Recommended",
+      indicatedForCondition: ["Allergies"],
+      description: "야외 훈련 시 꽃가루·먼지 알레르기 대응.",
+      tip: "지르텍, 클라리틴 등. 알레르기 체질이면 필수.",
+      tags: ["알레르기", "항히스타민", "야외"],
+      quantity: "1통",
+    },
+
+    // ══════════════════════════════════════════════════════════
+    //  발 관리 (FootCare)
+    // ══════════════════════════════════════════════════════════
     InsoleArcSupport: {
       type: "FootCare",
       productName: "아치지지 깔창 (평발용)",
       price: 18000,
+      priceRange: "12,000~25,000원",
       hasPriority: "Essential",
       indicatedForCondition: ["FlatFoot"],
       description: "평발용 아치 지지 설계. 장거리 행군 시 발바닥 통증 완화.",
+      tip: "평발이면 반드시 준비. 군화에 맞는 사이즈 확인 필수.",
       tags: ["평발", "행군", "통증완화"],
-      minFootSize: 220, maxFootSize: 300,
-      searchKeyword: "군화 깔창 평발 아치지지",
+      quantity: "1~2쌍",
     },
-    InsoleCushionStandard: {
+    InsoleCushion: {
       type: "FootCare",
       productName: "쿠션 군화 깔창",
       price: 8000,
+      priceRange: "5,000~15,000원",
       hasPriority: "Essential",
       indicatedForCondition: [],
       description: "군화 전용 충격 흡수 깔창. 장시간 착용 피로도 감소.",
-      tags: ["기본", "충격흡수"],
-      minFootSize: 230, maxFootSize: 295,
-      searchKeyword: "군화 깔창 충격흡수",
+      tip: "평발 아니어도 기본 깔창은 필수. 군 지급 깔창은 부실한 경우 많음.",
+      tags: ["깔창", "충격흡수", "기본"],
+      quantity: "1~2쌍",
     },
-    InsoleGelPremium: {
+    FootPowder: {
       type: "FootCare",
-      productName: "젤 쿠션 프리미엄 깔창",
-      price: 22000,
-      hasPriority: "Recommended",
-      indicatedForCondition: ["KneeIssue", "BackIssue"],
-      description: "젤 소재로 관절 충격 흡수 극대화. 무릎·허리 통증 예방.",
-      tags: ["젤", "관절보호", "프리미엄"],
-      minFootSize: 230, maxFootSize: 290,
-      searchKeyword: "젤 깔창 관절보호 충격흡수",
-    },
-
-    // ── 무릎 보호대 (KneeGuard) ──────────────────────────────
-    KneeGuardBasic: {
-      type: "KneeGuard",
-      productName: "기본 무릎 보호대",
-      price: 15000,
-      hasPriority: "Recommended",
-      indicatedForCondition: ["KneeIssue"],
-      description: "압박형 무릎 보호대. 훈련 중 무릎 안정화.",
-      tags: ["무릎", "압박", "훈련"],
-      searchKeyword: "무릎 보호대 운동 훈련",
-    },
-    KneeGuardHinged: {
-      type: "KneeGuard",
-      productName: "관절 힌지 무릎 보호대",
-      price: 35000,
-      hasPriority: "Essential",
-      indicatedForCondition: ["KneeIssue"],
-      indicatedForBodyCondition: ["Overweight", "Obese"],
-      description: "힌지 구조로 강한 측면 지지력 제공. 심한 무릎 통증·과체중에 권장.",
-      tags: ["힌지", "고급", "무릎통증"],
-      searchKeyword: "힌지 무릎 보호대 관절 지지",
-    },
-
-    // ── 허리 보호대 (BackSupport) ────────────────────────────
-    BackSupportBasic: {
-      type: "BackSupport",
-      productName: "허리 복대 보호대",
-      price: 12000,
-      hasPriority: "Recommended",
-      indicatedForCondition: ["BackIssue"],
-      description: "훈련 및 무거운 군장 착용 시 허리 지지.",
-      tags: ["허리", "군장", "복대"],
-      searchKeyword: "허리 복대 보호대 운동",
-    },
-    BackSupportPremium: {
-      type: "BackSupport",
-      productName: "의료용 요추 보호대",
-      price: 28000,
-      hasPriority: "Essential",
-      indicatedForCondition: ["BackIssue"],
-      description: "의료용 등급 요추 지지. 디스크 예방 효과.",
-      tags: ["의료용", "요추", "디스크"],
-      searchKeyword: "의료용 요추 보호대 허리디스크",
-    },
-
-    // ── 귀마개 (Earplug) ─────────────────────────────────────
-    EarplugFoam: {
-      type: "Earplug",
-      productName: "폼 귀마개 소음차단 (다량입)",
-      price: 5000,
-      hasPriority: "Essential",
-      indicatedForCondition: [],
-      description: "고차음 폼 귀마개. 사격 훈련·취침 시 필수.",
-      tags: ["사격", "소음차단", "기본"],
-      searchKeyword: "귀마개 소음차단 폼 사격",
-    },
-    EarplugSilicone: {
-      type: "Earplug",
-      productName: "수면용 실리콘 귀마개",
-      price: 9000,
-      hasPriority: "Recommended",
-      indicatedForCondition: ["LoudSnorer", "LightSleeper"],
-      description: "부드러운 실리콘 소재로 장시간 착용 편안. 코골이 차단.",
-      tags: ["수면", "실리콘", "코골이"],
-      searchKeyword: "수면 귀마개 실리콘 코골이 차단",
-    },
-    EarplugFilter: {
-      type: "Earplug",
-      productName: "재사용 필터 귀마개",
-      price: 18000,
-      hasPriority: "Recommended",
-      indicatedForCondition: ["LightSleeper"],
-      description: "필터 방식 선택적 소음 차단. 위험 소리는 인지 가능.",
-      tags: ["재사용", "필터", "스마트"],
-      searchKeyword: "필터 귀마개 재사용 소음 선택차단",
-    },
-
-    // ── 눈 관리 (EyeCare / EyeMask) ─────────────────────────
-    EyeDrops: {
-      type: "EyeCare",
-      productName: "히알루론산 인공눈물 (단회용)",
-      price: 12000,
-      hasPriority: "Essential",
-      indicatedForCondition: ["DryEyes"],
-      description: "보존제 없는 단회용 인공눈물. 건조한 막사 환경 대응.",
-      tags: ["인공눈물", "안구건조", "보습"],
-      searchKeyword: "인공눈물 히알루론산 단회용 안구건조",
-    },
-    EyeMaskSleep: {
-      type: "EyeMask",
-      productName: "3D 수면 안대",
+      productName: "발 냄새 제거제 / 풋파우더",
       price: 7000,
+      priceRange: "5,000~10,000원",
       hasPriority: "Recommended",
-      indicatedForCondition: ["LightSleeper"],
-      description: "눈 압박 없는 3D 구조. 빛 차단으로 숙면 도움.",
-      tags: ["안대", "수면", "빛차단"],
-      searchKeyword: "3D 수면 안대 빛차단 숙면",
+      indicatedForCondition: ["SweatyFeet"],
+      description: "군화 속 습기·냄새 제거. 무좀 예방에도 효과적.",
+      tip: "발에 땀이 많으면 필수. 군화 안에 뿌려두면 효과 좋음.",
+      tags: ["냄새", "습기", "무좀예방"],
+      quantity: "1개",
+    },
+    HeelPad: {
+      type: "FootCare",
+      productName: "발뒤꿈치 패드 / 물집 방지 패드",
+      price: 5000,
+      priceRange: "3,000~8,000원",
+      hasPriority: "Recommended",
+      indicatedForCondition: [],
+      description: "군화 뒤꿈치 쓸림·물집 방지.",
+      tip: "행군 전 발뒤꿈치에 미리 부착하면 물집 예방에 효과적.",
+      tags: ["물집", "행군", "보호"],
+      quantity: "1~2팩",
+    },
+    ThickSocks: {
+      type: "FootCare",
+      productName: "행군용 두꺼운 쿠션양말",
+      price: 12000,
+      priceRange: "8,000~18,000원 (3켤레)",
+      hasPriority: "Recommended",
+      indicatedForCondition: [],
+      description: "행군 시 발 충격 완화용 두꺼운 양말.",
+      tip: "일반 양말 위에 겹쳐 신어도 됨. 행군 시 발 보호에 큰 차이.",
+      tags: ["행군", "쿠션", "발보호"],
+      quantity: "2~3켤레",
+    },
+    ShoeDryer: {
+      type: "FootCare",
+      productName: "신발 건조제 / 제습제",
+      price: 5000,
+      priceRange: "3,000~8,000원",
+      hasPriority: "Recommended",
+      indicatedForCondition: ["SweatyFeet"],
+      description: "군화 습기 제거. 무좀 예방의 핵심.",
+      tip: "실리카겔 타입 또는 숯 타입. 밤에 군화에 넣어두면 다음 날 뽀송.",
+      tags: ["건조", "습기", "무좀예방"],
+      quantity: "2~3개",
     },
 
-    // ── 피부 관리 (SkinCare) ─────────────────────────────────
+    // ══════════════════════════════════════════════════════════
+    //  피부 관리 (SkinCare)
+    // ══════════════════════════════════════════════════════════
     Sunscreen: {
       type: "SkinCare",
       productName: "선크림 SPF50+ 워터프루프",
       price: 13000,
+      priceRange: "8,000~18,000원",
       hasPriority: "Essential",
       indicatedForCondition: [],
-      description: "야외 훈련 시 자외선 차단 필수. 땀에 강한 워터프루프 타입.",
+      description: "야외 훈련 시 자외선 차단 필수. 땀에 강한 워터프루프.",
+      tip: "선크림 안 바르면 피부 화상 위험. 유격훈련 시 특히 중요.",
       tags: ["선크림", "야외훈련", "자외선"],
-      searchKeyword: "선크림 SPF50 워터프루프 야외활동",
+      quantity: "1~2개",
     },
     LipBalm: {
       type: "SkinCare",
       productName: "보습 립밤",
       price: 4000,
+      priceRange: "2,000~6,000원",
       hasPriority: "Recommended",
       indicatedForCondition: [],
       description: "건조한 환경에서 입술 보호. 소형으로 휴대 편리.",
+      tip: "SPF 포함 립밤이면 더 좋음. 겨울에 특히 필수.",
       tags: ["립밤", "보습", "소형"],
-      searchKeyword: "립밤 보습 촉촉 입술보호",
+      quantity: "1~2개",
     },
-    Lotion: {
+    MoisturizingLotion: {
       type: "SkinCare",
       productName: "무향 보습 로션",
       price: 8000,
+      priceRange: "5,000~12,000원",
       hasPriority: "Recommended",
-      indicatedForCondition: [],
-      description: "군 생활 중 피부 보습. 향이 없어 단체 생활에 적합.",
+      indicatedForCondition: ["SensitiveSkin"],
+      description: "군 생활 중 피부 보습. 무향이라 단체 생활에 적합.",
+      tip: "얼굴용 + 바디용 겸용 제품이 편리. 소형으로.",
       tags: ["로션", "보습", "무향"],
-      searchKeyword: "무향 보습 로션 피부 건조",
+      quantity: "1개",
+    },
+    HandCream: {
+      type: "SkinCare",
+      productName: "핸드크림",
+      price: 5000,
+      priceRange: "3,000~8,000원",
+      hasPriority: "Optional",
+      indicatedForCondition: ["SensitiveSkin"],
+      indicatedForSituation: ["WinterEnlistment"],
+      description: "겨울철 손 갈라짐 방지.",
+      tip: "겨울 입대 시 권장. 소형 튜브로 주머니에.",
+      tags: ["핸드크림", "겨울", "보습"],
+      quantity: "1개",
+    },
+    AcnePatch: {
+      type: "SkinCare",
+      productName: "여드름 패치 / 스팟 케어",
+      price: 5000,
+      priceRange: "3,000~8,000원",
+      hasPriority: "Recommended",
+      indicatedForCondition: ["Acne"],
+      description: "여드름 부위에 부착하여 빠른 치유.",
+      tip: "스트레스·환경 변화로 여드름이 악화될 수 있음. 미리 준비.",
+      tags: ["여드름", "피부", "패치"],
+      quantity: "2~3팩",
+    },
+    SensitiveSkinCare: {
+      type: "SkinCare",
+      productName: "민감성 피부 진정 크림",
+      price: 12000,
+      priceRange: "8,000~18,000원",
+      hasPriority: "Recommended",
+      indicatedForCondition: ["SensitiveSkin"],
+      description: "피부 자극·트러블 진정용.",
+      tip: "시카 크림, 알로에 젤 등. 야외 훈련 후 진정 효과.",
+      tags: ["민감성", "진정", "트러블"],
+      quantity: "1개",
     },
 
-    // ── 문구 (Stationery) ────────────────────────────────────
-    WaterproofNotebook: {
-      type: "Stationery",
-      productName: "방수 소형 노트",
-      price: 6000,
+    // ══════════════════════════════════════════════════════════
+    //  관절 보호 (JointProtection)
+    // ══════════════════════════════════════════════════════════
+    KneeGuardBasic: {
+      type: "KneeGuard",
+      productName: "무릎 보호대",
+      price: 15000,
+      priceRange: "10,000~25,000원",
+      hasPriority: "Recommended",
+      indicatedForCondition: ["KneeIssue"],
+      description: "압박형 무릎 보호대. 훈련 중 무릎 안정화.",
+      tip: "포복·구르기 훈련 시 특히 유용. 얇은 타입이 군복 안에 착용 편함.",
+      tags: ["무릎", "훈련", "보호"],
+      quantity: "1~2개",
+    },
+    KneeGuardHinged: {
+      type: "KneeGuard",
+      productName: "관절 힌지 무릎 보호대 (고급)",
+      price: 35000,
+      priceRange: "25,000~50,000원",
+      hasPriority: "Recommended",
+      indicatedForCondition: ["KneeIssue"],
+      indicatedForBodyCondition: ["Overweight", "Obese"],
+      description: "힌지 구조로 강한 측면 지지력. 심한 무릎 통증·과체중에 권장.",
+      tip: "무릎 수술 경험 있거나 과체중이면 이 타입 추천.",
+      tags: ["힌지", "고급", "무릎통증"],
+      quantity: "1개",
+    },
+    BackSupportBasic: {
+      type: "BackSupport",
+      productName: "허리 복대 보호대",
+      price: 12000,
+      priceRange: "8,000~20,000원",
+      hasPriority: "Recommended",
+      indicatedForCondition: ["BackIssue"],
+      description: "무거운 군장 착용 시 허리 지지.",
+      tip: "행군·군장 훈련 시 허리 부담 완화에 큰 도움.",
+      tags: ["허리", "군장", "복대"],
+      quantity: "1개",
+    },
+    WristGuard: {
+      type: "JointProtection",
+      productName: "손목 보호대",
+      price: 8000,
+      priceRange: "5,000~12,000원",
+      hasPriority: "Optional",
+      indicatedForCondition: [],
+      description: "푸시업·포복 훈련 시 손목 보호.",
+      tip: "팔굽혀펴기 많이 하면 손목에 무리. 약한 편이면 준비.",
+      tags: ["손목", "훈련", "보호"],
+      quantity: "1~2개",
+    },
+
+    // ══════════════════════════════════════════════════════════
+    //  수면 보조 (SleepAid)
+    // ══════════════════════════════════════════════════════════
+    EarplugFoam: {
+      type: "Earplug",
+      productName: "폼 귀마개 (다량입)",
+      price: 5000,
+      priceRange: "3,000~8,000원",
+      hasPriority: "Essential",
+      indicatedForCondition: [],
+      description: "사격 훈련 소음 차단 + 취침 시 코골이 차단.",
+      tip: "1회용이므로 넉넉하게 준비. 전우 코골이 소리 차단 필수.",
+      tags: ["사격", "소음차단", "필수"],
+      quantity: "20~30쌍",
+    },
+    EarplugSilicone: {
+      type: "Earplug",
+      productName: "수면용 실리콘 귀마개",
+      price: 9000,
+      priceRange: "6,000~15,000원",
+      hasPriority: "Recommended",
+      indicatedForCondition: ["LoudSnorer", "LightSleeper"],
+      description: "부드러운 실리콘 소재로 장시간 착용 편안.",
+      tip: "수면이 예민하면 폼 귀마개 + 실리콘 귀마개 둘 다 준비 추천.",
+      tags: ["수면", "실리콘", "편안"],
+      quantity: "1~2쌍",
+    },
+    EyeMaskSleep: {
+      type: "EyeMask",
+      productName: "3D 수면 안대",
+      price: 7000,
+      priceRange: "5,000~12,000원",
+      hasPriority: "Recommended",
+      indicatedForCondition: ["LightSleeper"],
+      description: "눈 압박 없는 3D 구조. 빛 차단으로 숙면 도움.",
+      tip: "내무반 불빛이 완전히 꺼지지 않는 경우 많음. 예민하면 필수.",
+      tags: ["안대", "수면", "빛차단"],
+      quantity: "1개",
+    },
+    NeckPillow: {
+      type: "SleepAid",
+      productName: "접이식 목베개",
+      price: 8000,
+      priceRange: "5,000~12,000원",
+      hasPriority: "Optional",
+      indicatedForCondition: [],
+      description: "이동 시 잠깐 눈 붙일 때 유용.",
+      tip: "부피 작은 접이식 타입 추천. 버스 이동 시 편리.",
+      tags: ["목베개", "이동", "수면"],
+      quantity: "1개",
+    },
+
+    // ══════════════════════════════════════════════════════════
+    //  눈 관리 (EyeCare)
+    // ══════════════════════════════════════════════════════════
+    EyeDrops: {
+      type: "EyeCare",
+      productName: "인공눈물 (단회용)",
+      price: 12000,
+      priceRange: "8,000~15,000원",
+      hasPriority: "Essential",
+      indicatedForCondition: ["DryEyes"],
+      description: "보존제 없는 단회용 인공눈물. 건조한 막사 환경 대응.",
+      tip: "안구건조증 있으면 넉넉하게 2~3박스 준비.",
+      tags: ["인공눈물", "안구건조", "보습"],
+      quantity: "1~3박스",
+    },
+    SpareGlasses: {
+      type: "EyeCare",
+      productName: "여분 안경 + 안경줄",
+      price: 30000,
+      priceRange: "20,000~50,000원",
+      hasPriority: "Recommended",
+      indicatedForCondition: ["WearsGlasses"],
+      description: "훈련 중 안경 파손 대비. 안경줄로 낙하 방지.",
+      tip: "군에서 보급 안경 지급하지만 적응 시간 필요. 여분 안경 + 스포츠형 안경줄 추천.",
+      tags: ["안경", "여분", "파손대비"],
+      quantity: "안경 1개 + 안경줄 1~2개",
+    },
+    GlassesCleaningKit: {
+      type: "EyeCare",
+      productName: "안경닦이 + 세정제",
+      price: 5000,
+      priceRange: "3,000~7,000원",
+      hasPriority: "Recommended",
+      indicatedForCondition: ["WearsGlasses"],
+      description: "안경 렌즈 관리용 극세사 천 + 세정 스프레이.",
+      tip: "야외 훈련 시 안경 먼지가 많이 묻음. 닦이 여분도 준비.",
+      tags: ["안경", "세정", "관리"],
+      quantity: "1세트 + 극세사 천 여분",
+    },
+
+    // ══════════════════════════════════════════════════════════
+    //  편지 / 소통 용품 (LetterWriting)
+    // ══════════════════════════════════════════════════════════
+    Stamps: {
+      type: "LetterWriting",
+      productName: "우표",
+      price: 15000,
+      priceRange: "10,000~20,000원 (30장 기준)",
       hasPriority: "Recommended",
       indicatedForCondition: [],
-      description: "방수 처리된 소형 노트. 야외에서도 메모 가능.",
-      tags: ["노트", "방수", "메모"],
-      searchKeyword: "방수 노트 소형 야외 메모",
+      indicatedForSituation: ["HasGirlfriend"],
+      description: "편지 보낼 때 필수. 부대 내 우체통 이용 시.",
+      tip: "여자친구·가족에게 편지 보내려면 넉넉하게 준비. PX에서 구하기 어려울 수 있음.",
+      tags: ["편지", "우표", "소통"],
+      quantity: "20~30장",
     },
+    LetterSet: {
+      type: "LetterWriting",
+      productName: "편지지 + 편지봉투 세트",
+      price: 8000,
+      priceRange: "5,000~12,000원",
+      hasPriority: "Recommended",
+      indicatedForCondition: [],
+      indicatedForSituation: ["HasGirlfriend"],
+      description: "편지 쓸 때 사용. 예쁜 편지지는 받는 사람도 기분 좋음.",
+      tip: "봉투+편지지 세트로 넉넉하게. 사랑하는 사람에게 손편지의 감동은 특별함.",
+      tags: ["편지지", "봉투", "소통"],
+      quantity: "1~2세트 (20~30장)",
+    },
+    AddressBook: {
+      type: "LetterWriting",
+      productName: "주소록 수첩",
+      price: 3000,
+      priceRange: "2,000~5,000원",
+      hasPriority: "Recommended",
+      indicatedForCondition: [],
+      indicatedForSituation: ["HasGirlfriend"],
+      description: "가족·친구·연인 주소 기록용. 폰 없으면 주소 모름.",
+      tip: "입대 전 반드시 중요한 사람들 주소를 적어갈 것! 핸드폰 사용 제한 시 유일한 방법.",
+      tags: ["주소", "연락처", "필수"],
+      quantity: "1개",
+    },
+    PrintedPhotos: {
+      type: "LetterWriting",
+      productName: "인화 사진 (가족/연인)",
+      price: 5000,
+      priceRange: "3,000~10,000원",
+      hasPriority: "Optional",
+      indicatedForCondition: [],
+      indicatedForSituation: ["HasGirlfriend"],
+      description: "사랑하는 사람들 사진. 힘들 때 보면서 힘 얻기.",
+      tip: "지갑 사이즈 + 여권 사이즈로 여러 장 인화. 방수 코팅하면 오래감.",
+      tags: ["사진", "인화", "추억"],
+      quantity: "5~10장",
+    },
+    Postcards: {
+      type: "LetterWriting",
+      productName: "엽서 세트",
+      price: 5000,
+      priceRange: "3,000~8,000원",
+      hasPriority: "Optional",
+      indicatedForCondition: [],
+      description: "간단한 안부를 전할 때. 편지보다 부담 적음.",
+      tip: "그림이 있는 엽서는 동기들한테 선물용으로도 좋음.",
+      tags: ["엽서", "안부", "소통"],
+      quantity: "10~20장",
+    },
+
+    // ══════════════════════════════════════════════════════════
+    //  문구 / 필기 (Stationery)
+    // ══════════════════════════════════════════════════════════
     PenSet: {
       type: "Stationery",
       productName: "볼펜 세트",
       price: 3000,
+      priceRange: "2,000~5,000원",
       hasPriority: "Essential",
       indicatedForCondition: [],
-      description: "각종 서류 작성용. 여유 있게 챙겨야 합니다.",
+      description: "서류 작성, 메모, 편지 등 다용도.",
+      tip: "검정 + 파랑 볼펜 여유있게. 동기들에게 빌려주다 보면 금방 없어짐.",
       tags: ["볼펜", "서류", "필수"],
-      searchKeyword: "볼펜 세트 10개입",
+      quantity: "5~10개",
     },
-    NailClipper: {
+    LightPen: {
       type: "Stationery",
-      productName: "손발톱 깎이 세트",
+      productName: "라이트펜 (LED 볼펜)",
       price: 5000,
-      hasPriority: "Essential",
-      indicatedForCondition: [],
-      description: "손·발톱 정기 관리 필수. 세트 구성으로 편리.",
-      tags: ["위생", "필수", "관리"],
-      searchKeyword: "손발톱 깎이 세트 위생",
-    },
-
-    // ── 건강보조식품 (HealthSupplement) ─────────────────────
-    VitaminC: {
-      type: "HealthSupplement",
-      productName: "비타민 C 1000mg",
-      price: 8000,
+      priceRange: "3,000~8,000원",
       hasPriority: "Recommended",
       indicatedForCondition: [],
-      description: "면역력 강화. 훈련으로 체력 소모가 많을 때 도움.",
+      description: "어두운 곳에서도 필기 가능한 LED 내장 볼펜.",
+      tip: "야간 불침번, 어두운 내무반에서 편지·일기 쓸 때 매우 유용. 선임들에게 인기 많음.",
+      tags: ["LED", "야간", "불침번"],
+      quantity: "1~2개",
+    },
+    WaterproofNotebook: {
+      type: "Stationery",
+      productName: "방수 소형 노트",
+      price: 6000,
+      priceRange: "4,000~8,000원",
+      hasPriority: "Recommended",
+      indicatedForCondition: [],
+      description: "방수 처리된 소형 노트. 야외에서도 메모 가능.",
+      tip: "교육 메모, 연락처 기록 등. 일반 노트는 비 오면 끝.",
+      tags: ["노트", "방수", "메모"],
+      quantity: "1~2개",
+    },
+    PermanentMarker: {
+      type: "Stationery",
+      productName: "유성매직 (네임펜)",
+      price: 3000,
+      priceRange: "2,000~4,000원",
+      hasPriority: "Essential",
+      indicatedForCondition: [],
+      description: "개인 물품에 이름 쓸 때 필수. 군복·양말 등에 표시.",
+      tip: "가는 펜 + 굵은 펜 둘 다 준비. 입대 첫날부터 필요.",
+      tags: ["네임펜", "이름표시", "필수"],
+      quantity: "2~3개",
+    },
+    NameStickers: {
+      type: "Stationery",
+      productName: "이름 스티커 / 이름표",
+      price: 5000,
+      priceRange: "3,000~8,000원",
+      hasPriority: "Recommended",
+      indicatedForCondition: [],
+      description: "개인 물품 구분용 이름 스티커.",
+      tip: "방수 이름 스티커 주문 제작 추천. 속옷·양말 등에 붙이면 분실 방지.",
+      tags: ["이름표", "분실방지", "정리"],
+      quantity: "50~100장",
+    },
+
+    // ══════════════════════════════════════════════════════════
+    //  건강보조식품 (HealthSupplement)
+    // ══════════════════════════════════════════════════════════
+    VitaminC: {
+      type: "HealthSupplement",
+      productName: "비타민 C",
+      price: 8000,
+      priceRange: "5,000~12,000원",
+      hasPriority: "Recommended",
+      indicatedForCondition: [],
+      description: "면역력 강화. 훈련으로 체력 소모 많을 때 도움.",
+      tip: "씹어 먹는 타입이 편리. 물 없이도 먹을 수 있는 타입 추천.",
       tags: ["비타민", "면역", "건강"],
-      searchKeyword: "비타민C 1000mg 면역력 영양제",
+      quantity: "1~2통",
+    },
+    MultivitaminSupp: {
+      type: "HealthSupplement",
+      productName: "종합비타민",
+      price: 12000,
+      priceRange: "8,000~20,000원",
+      hasPriority: "Recommended",
+      indicatedForCondition: [],
+      description: "영양 균형 보충. 급식만으로 부족할 수 있는 영양소 보충.",
+      tags: ["종합비타민", "영양", "건강"],
+      quantity: "1통 (1~2개월분)",
+    },
+    Probiotics: {
+      type: "HealthSupplement",
+      productName: "유산균",
+      price: 15000,
+      priceRange: "10,000~25,000원",
+      hasPriority: "Recommended",
+      indicatedForCondition: ["WeakStomach"],
+      description: "장 건강 관리. 급식 환경 변화에 적응 도움.",
+      tip: "소화가 약하면 꼭 준비. 냉장 보관 불필요한 제품으로.",
+      tags: ["유산균", "장건강", "소화"],
+      quantity: "1통",
     },
     GlucosamineSupplement: {
       type: "HealthSupplement",
       productName: "글루코사민 관절 영양제",
       price: 15000,
+      priceRange: "10,000~25,000원",
       hasPriority: "Recommended",
       indicatedForCondition: ["KneeIssue", "BackIssue"],
       description: "관절 연골 보호. 장거리 행군 전 복용 권장.",
       tags: ["관절", "글루코사민", "행군"],
-      searchKeyword: "글루코사민 관절 영양제 연골",
+      quantity: "1통",
     },
-    ProteinPowder: {
+    MagnesiumSupplement: {
       type: "HealthSupplement",
-      productName: "단백질 보충제",
-      price: 35000,
+      productName: "마그네슘",
+      price: 10000,
+      priceRange: "7,000~15,000원",
+      hasPriority: "Recommended",
+      indicatedForCondition: ["FrequentCramps"],
+      description: "근육 경련(쥐) 예방. 훈련 중 다리에 쥐가 자주 나면.",
+      tip: "쥐가 잘 나는 사람에게 효과적. 자기 전 복용 권장.",
+      tags: ["마그네슘", "경련", "근육"],
+      quantity: "1통",
+    },
+    ProteinBar: {
+      type: "HealthSupplement",
+      productName: "단백질 보충제 / 프로틴바",
+      price: 20000,
+      priceRange: "15,000~30,000원",
       hasPriority: "Optional",
       indicatedForCondition: [],
       indicatedForBodyCondition: ["Underweight"],
-      description: "훈련 후 근육 회복 촉진. 저체중 훈련병에게 특히 권장.",
+      description: "훈련 후 근육 회복. 저체중이면 체중 증가에 도움.",
+      tip: "프로틴 파우더보다 프로틴바가 군 생활에 편리. 보관도 쉬움.",
       tags: ["단백질", "근육", "회복"],
-      searchKeyword: "단백질 보충제 프로틴 근육 회복",
+      quantity: "1박스",
+    },
+
+    // ══════════════════════════════════════════════════════════
+    //  방한용품 (WinterGear) — 겨울 입대 시
+    // ══════════════════════════════════════════════════════════
+    ThermalUnderwear: {
+      type: "WinterGear",
+      productName: "내복 (상하 세트)",
+      price: 20000,
+      priceRange: "15,000~30,000원",
+      hasPriority: "Essential",
+      indicatedForCondition: [],
+      indicatedForSituation: ["WinterEnlistment"],
+      description: "겨울 훈련 시 보온 필수. 얇고 따뜻한 기능성 내복.",
+      tip: "히트텍 같은 발열 내복 추천. 너무 두꺼우면 군복 안에 불편.",
+      tags: ["내복", "보온", "겨울"],
+      quantity: "2~3벌",
+    },
+    NeckWarmer: {
+      type: "WinterGear",
+      productName: "넥워머 / 목토시",
+      price: 8000,
+      priceRange: "5,000~12,000원",
+      hasPriority: "Recommended",
+      indicatedForCondition: [],
+      indicatedForSituation: ["WinterEnlistment"],
+      description: "목·얼굴 방한. 경계 근무 시 특히 유용.",
+      tip: "검정/카키/올리브 색상으로. 군복과 조화되는 색 추천.",
+      tags: ["넥워머", "방한", "경계근무"],
+      quantity: "1~2개",
+    },
+    WinterGloves: {
+      type: "WinterGear",
+      productName: "방한 장갑 (얇은 이너)",
+      price: 8000,
+      priceRange: "5,000~12,000원",
+      hasPriority: "Recommended",
+      indicatedForCondition: [],
+      indicatedForSituation: ["WinterEnlistment"],
+      description: "군 지급 장갑 안에 끼는 얇은 이너 장갑.",
+      tip: "터치스크린 가능한 타입이면 더 편리.",
+      tags: ["장갑", "방한", "이너"],
+      quantity: "1~2쌍",
+    },
+    HotPacks: {
+      type: "WinterGear",
+      productName: "핫팩 (붙이는 + 손난로)",
+      price: 15000,
+      priceRange: "10,000~25,000원 (20개 기준)",
+      hasPriority: "Essential",
+      indicatedForCondition: [],
+      indicatedForSituation: ["WinterEnlistment"],
+      description: "겨울 경계 근무·훈련 시 한파 대비 필수.",
+      tip: "붙이는 핫팩(허리·배) + 손난로(주머니) 둘 다 준비. 넉넉할수록 좋음.",
+      tags: ["핫팩", "방한", "필수"],
+      quantity: "20~30개",
+    },
+    WinterSocks: {
+      type: "WinterGear",
+      productName: "방한 양말 (두꺼운)",
+      price: 12000,
+      priceRange: "8,000~18,000원 (3켤레)",
+      hasPriority: "Recommended",
+      indicatedForCondition: [],
+      indicatedForSituation: ["WinterEnlistment"],
+      description: "겨울 발 보온용. 울/기능성 소재 두꺼운 양말.",
+      tip: "발이 따뜻해야 전체가 따뜻함. 등산용 양말도 좋음.",
+      tags: ["양말", "방한", "보온"],
+      quantity: "3~5켤레",
+    },
+
+    // ══════════════════════════════════════════════════════════
+    //  여름용품 (SummerGear) — 여름 입대 시
+    // ══════════════════════════════════════════════════════════
+    CoolingSleeves: {
+      type: "SummerGear",
+      productName: "쿨토시 / 쿨링 암슬리브",
+      price: 6000,
+      priceRange: "4,000~10,000원",
+      hasPriority: "Recommended",
+      indicatedForCondition: [],
+      indicatedForSituation: ["SummerEnlistment"],
+      description: "자외선 차단 + 쿨링 효과. 야외 훈련 시 팔 보호.",
+      tip: "자외선 차단 기능이 있는 쿨토시가 선크림 보조로 좋음.",
+      tags: ["쿨토시", "자외선", "쿨링"],
+      quantity: "1~2쌍",
+    },
+    CoolingTowel: {
+      type: "SummerGear",
+      productName: "쿨링 타올",
+      price: 5000,
+      priceRange: "3,000~8,000원",
+      hasPriority: "Recommended",
+      indicatedForCondition: [],
+      indicatedForSituation: ["SummerEnlistment"],
+      description: "물에 적셔 목에 두르면 시원함. 열사병 예방.",
+      tip: "여름 훈련 시 생명줄. 물에 적시면 즉시 체온 하강.",
+      tags: ["쿨링", "열사병예방", "여름"],
+      quantity: "1~2장",
+    },
+    HeatRashPowder: {
+      type: "SummerGear",
+      productName: "땀띠 파우더 / 베이비파우더",
+      price: 5000,
+      priceRange: "3,000~8,000원",
+      hasPriority: "Recommended",
+      indicatedForCondition: ["SensitiveSkin"],
+      indicatedForSituation: ["SummerEnlistment"],
+      description: "땀띠·피부 쓸림 예방. 군복 마찰 부위에 사용.",
+      tip: "허벅지 안쪽, 겨드랑이 등 마찰 부위에 바르면 땀띠 예방.",
+      tags: ["땀띠", "파우더", "마찰방지"],
+      quantity: "1개",
+    },
+    InsectRepellent: {
+      type: "SummerGear",
+      productName: "벌레퇴치 스프레이",
+      price: 6000,
+      priceRange: "4,000~10,000원",
+      hasPriority: "Essential",
+      indicatedForCondition: [],
+      indicatedForSituation: ["SummerEnlistment"],
+      description: "모기·벌레 퇴치. 산속 훈련 시 필수.",
+      tip: "피부에 뿌리는 타입 + 옷에 뿌리는 타입 둘 다 유용.",
+      tags: ["벌레", "모기", "야외훈련"],
+      quantity: "1~2개",
+    },
+
+    // ══════════════════════════════════════════════════════════
+    //  편의용품 (Convenience)
+    // ══════════════════════════════════════════════════════════
+    SewingKit: {
+      type: "Convenience",
+      productName: "재봉 세트 (바늘 + 실)",
+      price: 3000,
+      priceRange: "2,000~5,000원",
+      hasPriority: "Essential",
+      indicatedForCondition: [],
+      description: "군복·단추 수선용. 단추 떨어지면 바로 달아야 함.",
+      tip: "검정/카키 실 포함 미니 세트. 실 색상 군복에 맞추기.",
+      tags: ["재봉", "수선", "단추"],
+      quantity: "1세트",
+    },
+    ClotheslineClips: {
+      type: "Convenience",
+      productName: "빨래줄 + 빨래집게",
+      price: 5000,
+      priceRange: "3,000~7,000원",
+      hasPriority: "Recommended",
+      indicatedForCondition: [],
+      description: "생활관 내 빨래 건조용.",
+      tip: "접이식 빨래줄이 편리. 집게는 바람에 날리지 않는 타입으로.",
+      tags: ["빨래", "건조", "생활"],
+      quantity: "줄 1개 + 집게 10~20개",
+    },
+    DigitalWatch: {
+      type: "Convenience",
+      productName: "전자시계 (군용)",
+      price: 15000,
+      priceRange: "10,000~30,000원",
+      hasPriority: "Essential",
+      indicatedForCondition: [],
+      description: "시간 확인 필수. 핸드폰 사용 제한 시 유일한 시간 확인 수단.",
+      tip: "카시오 F-91W가 군인 국민시계. 방수·알람·라이트 기능 있으면 충분.",
+      tags: ["시계", "시간", "필수"],
+      quantity: "1개",
+    },
+    Padlock: {
+      type: "Convenience",
+      productName: "자물쇠 (소형)",
+      price: 5000,
+      priceRange: "3,000~8,000원",
+      hasPriority: "Recommended",
+      indicatedForCondition: [],
+      description: "개인 사물함 잠금용.",
+      tip: "번호 자물쇠보다 열쇠식이 편한 경우 많음. 열쇠 분실 주의.",
+      tags: ["자물쇠", "보관", "보안"],
+      quantity: "1~2개",
+    },
+    PowerBank: {
+      type: "Convenience",
+      productName: "보조배터리",
+      price: 20000,
+      priceRange: "15,000~30,000원",
+      hasPriority: "Recommended",
+      indicatedForCondition: [],
+      description: "핸드폰 충전용. 콘센트 부족한 내무반 대비.",
+      tip: "10,000~20,000mAh 용량 추천. 너무 크면 무거움.",
+      tags: ["충전", "배터리", "핸드폰"],
+      quantity: "1개",
+    },
+    Earphones: {
+      type: "Convenience",
+      productName: "유선 이어폰",
+      price: 10000,
+      priceRange: "5,000~20,000원",
+      hasPriority: "Recommended",
+      indicatedForCondition: [],
+      description: "개인 시간에 음악·영상 감상. 블루투스보다 유선이 안전.",
+      tip: "무선 이어폰은 분실 위험. 유선이 군 생활에 더 적합.",
+      tags: ["이어폰", "유선", "여가"],
+      quantity: "1~2개",
+    },
+    MiniFlashlight: {
+      type: "Convenience",
+      productName: "소형 손전등 / 헤드랜턴",
+      price: 10000,
+      priceRange: "5,000~15,000원",
+      hasPriority: "Recommended",
+      indicatedForCondition: [],
+      description: "야간 이동, 불침번, 비상 시 사용.",
+      tip: "소형 LED 손전등 또는 미니 헤드랜턴. 불침번 때 유용.",
+      tags: ["손전등", "야간", "비상"],
+      quantity: "1개",
+    },
+    Carabiner: {
+      type: "Convenience",
+      productName: "카라비너 (다용도 고리)",
+      price: 3000,
+      priceRange: "2,000~5,000원",
+      hasPriority: "Optional",
+      indicatedForCondition: [],
+      description: "물통·열쇠 등 소지품 고정용.",
+      tip: "군장에 물건 달 때, 열쇠 관리할 때 편리.",
+      tags: ["카라비너", "고정", "다용도"],
+      quantity: "2~3개",
+    },
+    WaterproofPouch: {
+      type: "Convenience",
+      productName: "방수 파우치",
+      price: 5000,
+      priceRange: "3,000~8,000원",
+      hasPriority: "Recommended",
+      indicatedForCondition: [],
+      description: "핸드폰·지갑 등 소중한 물건 방수 보관.",
+      tip: "비 오는 날 행군·훈련 시 전자기기 보호 필수.",
+      tags: ["방수", "보관", "전자기기"],
+      quantity: "1~2개",
+    },
+
+    // ══════════════════════════════════════════════════════════
+    //  간식 / 식품 (Snacks)
+    // ══════════════════════════════════════════════════════════
+    EnergyBars: {
+      type: "Snacks",
+      productName: "에너지바 / 단백질바",
+      price: 15000,
+      priceRange: "10,000~20,000원 (10개입)",
+      hasPriority: "Recommended",
+      indicatedForCondition: [],
+      description: "훈련 중 간편한 에너지 보충.",
+      tip: "행군·훈련 중 주머니에 넣고 다니며 먹기 좋음.",
+      tags: ["에너지", "간식", "휴대"],
+      quantity: "10~20개",
+    },
+    CandySweets: {
+      type: "Snacks",
+      productName: "사탕 / 캔디",
+      price: 5000,
+      priceRange: "3,000~8,000원",
+      hasPriority: "Optional",
+      indicatedForCondition: [],
+      description: "훈련 중 당 보충. 동기들과 나눠 먹기도 좋음.",
+      tip: "박하사탕·캐러멜 등 녹지 않는 타입. 동기들에게 인기 좋음.",
+      tags: ["사탕", "당보충", "나눔"],
+      quantity: "1~2봉지",
+    },
+    Nuts: {
+      type: "Snacks",
+      productName: "견과류 (소포장)",
+      price: 10000,
+      priceRange: "7,000~15,000원",
+      hasPriority: "Optional",
+      indicatedForCondition: [],
+      description: "영양가 높은 간식. 소포장이면 휴대 편리.",
+      tip: "데일리 소포장 견과류가 보관·휴대에 좋음.",
+      tags: ["견과류", "영양", "간식"],
+      quantity: "10~20포",
+    },
+
+    // ══════════════════════════════════════════════════════════
+    //  정신건강 / 취미 (MentalHealth)
+    // ══════════════════════════════════════════════════════════
+    PocketBooks: {
+      type: "MentalHealth",
+      productName: "책 (소형 문고판)",
+      price: 10000,
+      priceRange: "7,000~15,000원",
+      hasPriority: "Optional",
+      indicatedForCondition: [],
+      description: "개인 시간에 독서. 자기계발·소설 등.",
+      tip: "큰 책보다 문고판이 보관 편함. 훈련소에서 읽을 시간은 적지만 자대 가면 여유 생김.",
+      tags: ["독서", "여가", "자기계발"],
+      quantity: "1~3권",
+    },
+    Diary: {
+      type: "MentalHealth",
+      productName: "일기장 / 다이어리",
+      price: 5000,
+      priceRange: "3,000~8,000원",
+      hasPriority: "Recommended",
+      indicatedForCondition: [],
+      description: "군 생활 기록. 나중에 소중한 추억이 됨.",
+      tip: "매일 한 줄이라도 쓰면 전역 후 좋은 추억이 됨. 소형으로.",
+      tags: ["일기", "기록", "추억"],
+      quantity: "1개",
+    },
+    FamilyPhotos: {
+      type: "MentalHealth",
+      productName: "가족 사진",
+      price: 3000,
+      priceRange: "2,000~5,000원",
+      hasPriority: "Recommended",
+      indicatedForCondition: [],
+      description: "힘들 때 가족 사진 보며 힘 얻기.",
+      tip: "지갑에 넣을 수 있는 사이즈로 인화. 사물함에도 붙여두면 좋음.",
+      tags: ["가족", "사진", "위안"],
+      quantity: "3~5장",
     },
   },
 
   /* =========================================================
-     5. 공리 / 추론 규칙 (Axioms & SWRL-style Rules)
+     5. 추론 규칙
      ========================================================= */
   rules: [
-    // ── BMI 분류 규칙 ──────────────────────────────────────
+    // ── BMI 분류 ──────────────────────────────────────────
     {
       id: "R-BMI-UNDER",
       label: "저체중 분류",
-      comment: "BMI < 18.5 → Underweight",
       when: (kb) => kb.bmi < 18.5,
       then: (kb) => kb.assert("hasBodyCondition", "Underweight"),
     },
     {
       id: "R-BMI-NORMAL",
       label: "정상 체중 분류",
-      comment: "18.5 ≤ BMI < 23 → NormalWeight",
       when: (kb) => kb.bmi >= 18.5 && kb.bmi < 23,
       then: (kb) => kb.assert("hasBodyCondition", "NormalWeight"),
     },
     {
       id: "R-BMI-OVER",
       label: "과체중 분류",
-      comment: "23 ≤ BMI < 25 → Overweight",
       when: (kb) => kb.bmi >= 23 && kb.bmi < 25,
       then: (kb) => kb.assert("hasBodyCondition", "Overweight"),
     },
     {
       id: "R-BMI-OBESE",
       label: "비만 분류",
-      comment: "BMI ≥ 25 → Obese",
       when: (kb) => kb.bmi >= 25,
       then: (kb) => kb.assert("hasBodyCondition", "Obese"),
     },
 
-    // ── 제품 추천 규칙 ──────────────────────────────────────
+    // ── 건강 상태 기반 추천 ──────────────────────────────────
     {
       id: "R-PROD-CONDITION",
-      label: "건강 상태 기반 제품 추천",
-      comment: "indicatedForCondition 일치 시 우선도 상향 추천",
+      label: "건강 상태 기반 준비물 추천",
       when: (kb, prod) =>
-        (prod.indicatedForCondition || []).some((c) => kb.hasHealthCondition.has(c)),
+        (prod.indicatedForCondition || []).some((c) => kb.hasCondition(c)),
       then: (kb, prod) => kb.recommend(prod, "conditionMatch"),
     },
+
+    // ── 체형 기반 추천 ──────────────────────────────────────
     {
       id: "R-PROD-BODY",
-      label: "체형 기반 제품 추천",
-      comment: "indicatedForBodyCondition 일치 시 추천",
+      label: "체형 기반 준비물 추천",
       when: (kb, prod) =>
         (prod.indicatedForBodyCondition || []).some((c) => kb.hasBodyCondition === c),
       then: (kb, prod) => kb.recommend(prod, "bodyMatch"),
     },
+
+    // ── 상황 기반 추천 ──────────────────────────────────────
     {
-      id: "R-PROD-ESSENTIAL",
-      label: "필수 제품 기본 추천",
-      comment: "모든 입대 예정자에게 Essential 제품 추천",
-      when: (kb, prod) => prod.hasPriority === "Essential",
-      then: (kb, prod) => kb.recommend(prod, "essential"),
-    },
-    {
-      id: "R-PROD-FOOTSIZE",
-      label: "발 사이즈 적합성 검사",
-      comment: "발 사이즈 범위 벗어나면 추천 목록에서 제외",
+      id: "R-PROD-SITUATION",
+      label: "상황 기반 준비물 추천",
       when: (kb, prod) =>
-        prod.minFootSize != null &&
-        (kb.footSize < prod.minFootSize || kb.footSize > prod.maxFootSize),
-      then: (kb, prod) => kb.exclude(prod, "footSizeMismatch"),
+        (prod.indicatedForSituation || []).some((s) => kb.hasSituation(s)),
+      then: (kb, prod) => kb.recommend(prod, "situationMatch"),
     },
 
-    // ── 복합 규칙 ───────────────────────────────────────────
+    // ── 필수 품목 자동 추천 ─────────────────────────────────
+    {
+      id: "R-PROD-ESSENTIAL",
+      label: "필수 준비물 기본 추천",
+      when: (kb, prod) => prod.hasPriority === "Essential" && !(prod.indicatedForSituation || []).length,
+      then: (kb, prod) => kb.recommend(prod, "essential"),
+    },
+
+    // ── 상황 필수 품목 (해당 상황일 때만) ─────────────────────
+    {
+      id: "R-PROD-SITUATION-ESSENTIAL",
+      label: "상황별 필수 준비물",
+      when: (kb, prod) =>
+        prod.hasPriority === "Essential" &&
+        (prod.indicatedForSituation || []).length > 0 &&
+        (prod.indicatedForSituation || []).some((s) => kb.hasSituation(s)),
+      then: (kb, prod) => kb.recommend(prod, "situationEssential"),
+    },
+
+    // ── 복합 규칙 ──────────────────────────────────────────
     {
       id: "R-KNEE-OBESE",
-      label: "비만+무릎통증 → 힌지 보호대 필수로 격상",
-      comment: "Obese ∧ KneeIssue → KneeGuardHinged priority = Essential",
+      label: "비만+무릎통증 → 힌지 보호대 필수 격상",
       when: (kb, prod) =>
         prod._id === "KneeGuardHinged" &&
         kb.hasBodyCondition === "Obese" &&
-        kb.hasHealthCondition.has("KneeIssue"),
+        kb.hasCondition("KneeIssue"),
       then: (kb, prod) => kb.upgradePriority(prod, "Essential", "R-KNEE-OBESE"),
     },
     {
-      id: "R-BACK-HEAVY",
-      label: "과체중/비만 + 허리 통증 → 의료용 요추 보호대 필수 격상",
+      id: "R-SWEATY-FOOTCARE",
+      label: "발 땀 많음 → 발 관리 용품 필수 격상",
       when: (kb, prod) =>
-        prod._id === "BackSupportPremium" &&
-        ["Overweight", "Obese"].includes(kb.hasBodyCondition) &&
-        kb.hasHealthCondition.has("BackIssue"),
-      then: (kb, prod) => kb.upgradePriority(prod, "Essential", "R-BACK-HEAVY"),
+        ["FootPowder", "ShoeDryer", "FootFungusOintment"].includes(prod._id) &&
+        kb.hasCondition("SweatyFeet"),
+      then: (kb, prod) => kb.upgradePriority(prod, "Essential", "R-SWEATY-FOOTCARE"),
+    },
+    {
+      id: "R-GIRLFRIEND-LETTER",
+      label: "여자친구 있음 → 편지용품 필수 격상",
+      when: (kb, prod) =>
+        ["Stamps", "LetterSet", "AddressBook"].includes(prod._id) &&
+        kb.hasSituation("HasGirlfriend"),
+      then: (kb, prod) => kb.upgradePriority(prod, "Essential", "R-GIRLFRIEND-LETTER"),
+    },
+    {
+      id: "R-GLASSES-ESSENTIAL",
+      label: "안경 착용 → 안경 관련 용품 필수 격상",
+      when: (kb, prod) =>
+        ["SpareGlasses", "GlassesCleaningKit"].includes(prod._id) &&
+        kb.hasCondition("WearsGlasses"),
+      then: (kb, prod) => kb.upgradePriority(prod, "Essential", "R-GLASSES-ESSENTIAL"),
+    },
+    {
+      id: "R-SENSITIVE-SKIN-CARE",
+      label: "민감성 피부 → 피부 관리 필수 격상",
+      when: (kb, prod) =>
+        ["SensitiveSkinCare", "MoisturizingLotion"].includes(prod._id) &&
+        kb.hasCondition("SensitiveSkin"),
+      then: (kb, prod) => kb.upgradePriority(prod, "Essential", "R-SENSITIVE-SKIN-CARE"),
     },
   ],
 };
 
-// Node.js 환경에서도 require()로 불러올 수 있도록
-// 브라우저에서는 이 줄이 무시됨
 if (typeof module !== "undefined" && module.exports) {
   module.exports = { ONTOLOGY };
 }
