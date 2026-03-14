@@ -7,7 +7,7 @@
  *  - 예상 가격대만 제공 (실제 쇼핑몰 연동 없음)
  */
 
-const ONTOLOGY = {
+var ONTOLOGY = {
 
   /* =========================================================
      1. 클래스 계층 (rdfs:subClassOf)
@@ -44,8 +44,10 @@ const ONTOLOGY = {
 
     // 상황 조건
     SituationCondition: { superClass: "Thing" },
-    WinterEnlistment:   { superClass: "SituationCondition" },
-    SummerEnlistment:   { superClass: "SituationCondition" },
+    SpringEnlistment:   { superClass: "SituationCondition" },  // 봄 (3~5월)
+    SummerEnlistment:   { superClass: "SituationCondition" },  // 여름 (6~8월)
+    FallEnlistment:     { superClass: "SituationCondition" },  // 가을 (9~11월)
+    WinterEnlistment:   { superClass: "SituationCondition" },  // 겨울 (12~2월)
     HasGirlfriend:      { superClass: "SituationCondition" },
 
     // 제품 분류
@@ -65,8 +67,10 @@ const ONTOLOGY = {
     LetterWriting:    { superClass: "Product" },   // 편지/소통
     Stationery:       { superClass: "Product" },   // 문구/필기
     HealthSupplement: { superClass: "Product" },   // 건강보조식품
-    WinterGear:       { superClass: "Product" },   // 방한용품
+    SpringGear:       { superClass: "Product" },   // 봄용품
     SummerGear:       { superClass: "Product" },   // 여름용품
+    FallGear:         { superClass: "Product" },   // 가을용품
+    WinterGear:       { superClass: "Product" },   // 방한용품
     Convenience:      { superClass: "Product" },   // 편의용품
     Snacks:           { superClass: "Product" },   // 간식/식품
     MentalHealth:     { superClass: "Product" },   // 정신건강/취미
@@ -396,10 +400,10 @@ const ONTOLOGY = {
       priceRange: "3,000~7,000원",
       hasPriority: "Recommended",
       indicatedForCondition: [],
-      indicatedForSituation: ["SummerEnlistment"],
+      indicatedForSituation: ["SpringEnlistment", "SummerEnlistment", "FallEnlistment"],
       description: "모기·벌레 물린 데 바르는 연고.",
-      tip: "여름 입대 시 필수. 물파스도 유용.",
-      tags: ["벌레", "가려움", "여름"],
+      tip: "봄~가을 입대 시 필수. 물파스도 유용.",
+      tags: ["벌레", "가려움", "봄여름가을"],
       quantity: "1개",
     },
     AntidiarrhealMedicine: {
@@ -561,10 +565,10 @@ const ONTOLOGY = {
       priceRange: "3,000~8,000원",
       hasPriority: "Optional",
       indicatedForCondition: ["SensitiveSkin"],
-      indicatedForSituation: ["WinterEnlistment"],
-      description: "겨울철 손 갈라짐 방지.",
-      tip: "겨울 입대 시 권장. 소형 튜브로 주머니에.",
-      tags: ["핸드크림", "겨울", "보습"],
+      indicatedForSituation: ["FallEnlistment", "WinterEnlistment"],
+      description: "가을·겨울철 손 갈라짐 방지.",
+      tip: "가을·겨울 입대 시 권장. 소형 튜브로 주머니에.",
+      tags: ["핸드크림", "가을겨울", "보습"],
       quantity: "1개",
     },
     AcnePatch: {
@@ -945,7 +949,162 @@ const ONTOLOGY = {
     },
 
     // ══════════════════════════════════════════════════════════
-    //  방한용품 (WinterGear) — 겨울 입대 시
+    //  봄용품 (SpringGear) — 봄 입대 시 (3~5월)
+    // ══════════════════════════════════════════════════════════
+    SpringJacketLayer: {
+      type: "SpringGear",
+      productName: "얇은 이너 (봄용 내복)",
+      price: 12000,
+      priceRange: "8,000~18,000원",
+      hasPriority: "Recommended",
+      indicatedForCondition: [],
+      indicatedForSituation: ["SpringEnlistment"],
+      description: "봄 일교차 대비. 아침·저녁은 춥고 낮은 따뜻함.",
+      tip: "얇은 기능성 내의 1~2벌이면 충분. 두꺼운 겨울 내복은 불필요.",
+      tags: ["봄", "일교차", "이너"],
+      quantity: "1~2벌",
+    },
+    SpringAllergyMask: {
+      type: "SpringGear",
+      productName: "황사/꽃가루 마스크",
+      price: 5000,
+      priceRange: "3,000~8,000원",
+      hasPriority: "Recommended",
+      indicatedForCondition: ["Allergies"],
+      indicatedForSituation: ["SpringEnlistment"],
+      description: "봄철 황사·꽃가루 차단. 알레르기 체질이면 필수.",
+      tip: "KF94 마스크 넉넉하게 준비. 야외 훈련 시 큰 도움.",
+      tags: ["마스크", "황사", "꽃가루"],
+      quantity: "10~20장",
+    },
+    SpringInsectRepellent: {
+      type: "SpringGear",
+      productName: "벌레퇴치 스프레이 (봄용)",
+      price: 6000,
+      priceRange: "4,000~10,000원",
+      hasPriority: "Recommended",
+      indicatedForCondition: [],
+      indicatedForSituation: ["SpringEnlistment"],
+      description: "봄부터 벌레 활동 시작. 진드기·모기 예방.",
+      tip: "산속 훈련 시 진드기 주의. 옷에 뿌리는 퍼메트린 스프레이도 유용.",
+      tags: ["벌레", "진드기", "봄"],
+      quantity: "1개",
+    },
+
+    // ══════════════════════════════════════════════════════════
+    //  여름용품 (SummerGear) — 여름 입대 시 (6~8월)
+    // ══════════════════════════════════════════════════════════
+    CoolingSleeves: {
+      type: "SummerGear",
+      productName: "쿨토시 / 쿨링 암슬리브",
+      price: 6000,
+      priceRange: "4,000~10,000원",
+      hasPriority: "Recommended",
+      indicatedForCondition: [],
+      indicatedForSituation: ["SummerEnlistment"],
+      description: "자외선 차단 + 쿨링 효과. 야외 훈련 시 팔 보호.",
+      tip: "자외선 차단 기능이 있는 쿨토시가 선크림 보조로 좋음.",
+      tags: ["쿨토시", "자외선", "쿨링"],
+      quantity: "1~2쌍",
+    },
+    CoolingTowel: {
+      type: "SummerGear",
+      productName: "쿨링 타올",
+      price: 5000,
+      priceRange: "3,000~8,000원",
+      hasPriority: "Recommended",
+      indicatedForCondition: [],
+      indicatedForSituation: ["SummerEnlistment"],
+      description: "물에 적셔 목에 두르면 시원함. 열사병 예방.",
+      tip: "여름 훈련 시 생명줄. 물에 적시면 즉시 체온 하강.",
+      tags: ["쿨링", "열사병예방", "여름"],
+      quantity: "1~2장",
+    },
+    HeatRashPowder: {
+      type: "SummerGear",
+      productName: "땀띠 파우더 / 베이비파우더",
+      price: 5000,
+      priceRange: "3,000~8,000원",
+      hasPriority: "Recommended",
+      indicatedForCondition: ["SensitiveSkin"],
+      indicatedForSituation: ["SpringEnlistment", "SummerEnlistment"],
+      description: "땀띠·피부 쓸림 예방. 군복 마찰 부위에 사용.",
+      tip: "허벅지 안쪽, 겨드랑이 등 마찰 부위에 바르면 땀띠 예방.",
+      tags: ["땀띠", "파우더", "마찰방지"],
+      quantity: "1개",
+    },
+    InsectRepellent: {
+      type: "SummerGear",
+      productName: "벌레퇴치 스프레이",
+      price: 6000,
+      priceRange: "4,000~10,000원",
+      hasPriority: "Essential",
+      indicatedForCondition: [],
+      indicatedForSituation: ["SummerEnlistment"],
+      description: "모기·벌레 퇴치. 산속 훈련 시 필수.",
+      tip: "피부에 뿌리는 타입 + 옷에 뿌리는 타입 둘 다 유용.",
+      tags: ["벌레", "모기", "야외훈련"],
+      quantity: "1~2개",
+    },
+    PortableFan: {
+      type: "SummerGear",
+      productName: "휴대용 목선풍기 / 미니선풍기",
+      price: 10000,
+      priceRange: "7,000~15,000원",
+      hasPriority: "Optional",
+      indicatedForCondition: [],
+      indicatedForSituation: ["SummerEnlistment"],
+      description: "개인 시간에 더위 해소. 건전지/충전식.",
+      tip: "부대마다 반입 가능 여부 다름. 확인 필요.",
+      tags: ["선풍기", "더위", "여름"],
+      quantity: "1개",
+    },
+
+    // ══════════════════════════════════════════════════════════
+    //  가을용품 (FallGear) — 가을 입대 시 (9~11월)
+    // ══════════════════════════════════════════════════════════
+    FallLightThermal: {
+      type: "FallGear",
+      productName: "가벼운 기능성 내복",
+      price: 15000,
+      priceRange: "10,000~20,000원",
+      hasPriority: "Recommended",
+      indicatedForCondition: [],
+      indicatedForSituation: ["FallEnlistment"],
+      description: "가을 일교차 + 초겨울 대비. 얇은 발열 내복.",
+      tip: "11월부터 급격히 추워짐. 훈련소 5주 동안 겨울로 넘어갈 수 있음.",
+      tags: ["가을", "내복", "일교차"],
+      quantity: "2벌",
+    },
+    FallHotPacks: {
+      type: "FallGear",
+      productName: "핫팩 (소량)",
+      price: 8000,
+      priceRange: "5,000~12,000원 (10개)",
+      hasPriority: "Recommended",
+      indicatedForCondition: [],
+      indicatedForSituation: ["FallEnlistment"],
+      description: "가을 후반 급추위 대비. 겨울만큼은 아니지만 필요.",
+      tip: "10~15개 정도면 충분. 경계 근무 시 유용.",
+      tags: ["핫팩", "가을", "방한"],
+      quantity: "10~15개",
+    },
+    FallNeckWarmer: {
+      type: "FallGear",
+      productName: "얇은 넥워머",
+      price: 6000,
+      priceRange: "4,000~10,000원",
+      hasPriority: "Optional",
+      indicatedForCondition: [],
+      indicatedForSituation: ["FallEnlistment"],
+      description: "가을 후반 새벽·야간 추위 대비.",
+      tip: "얇은 타입으로 준비. 두꺼운 겨울용은 과할 수 있음.",
+      tags: ["넥워머", "가을", "야간"],
+      quantity: "1개",
+    },
+
+    // ══════════════════════════════════════════════════════════
+    //  방한용품 (WinterGear) — 겨울 입대 시 (12~2월)
     // ══════════════════════════════════════════════════════════
     ThermalUnderwear: {
       type: "WinterGear",
@@ -1011,62 +1170,6 @@ const ONTOLOGY = {
       tip: "발이 따뜻해야 전체가 따뜻함. 등산용 양말도 좋음.",
       tags: ["양말", "방한", "보온"],
       quantity: "3~5켤레",
-    },
-
-    // ══════════════════════════════════════════════════════════
-    //  여름용품 (SummerGear) — 여름 입대 시
-    // ══════════════════════════════════════════════════════════
-    CoolingSleeves: {
-      type: "SummerGear",
-      productName: "쿨토시 / 쿨링 암슬리브",
-      price: 6000,
-      priceRange: "4,000~10,000원",
-      hasPriority: "Recommended",
-      indicatedForCondition: [],
-      indicatedForSituation: ["SummerEnlistment"],
-      description: "자외선 차단 + 쿨링 효과. 야외 훈련 시 팔 보호.",
-      tip: "자외선 차단 기능이 있는 쿨토시가 선크림 보조로 좋음.",
-      tags: ["쿨토시", "자외선", "쿨링"],
-      quantity: "1~2쌍",
-    },
-    CoolingTowel: {
-      type: "SummerGear",
-      productName: "쿨링 타올",
-      price: 5000,
-      priceRange: "3,000~8,000원",
-      hasPriority: "Recommended",
-      indicatedForCondition: [],
-      indicatedForSituation: ["SummerEnlistment"],
-      description: "물에 적셔 목에 두르면 시원함. 열사병 예방.",
-      tip: "여름 훈련 시 생명줄. 물에 적시면 즉시 체온 하강.",
-      tags: ["쿨링", "열사병예방", "여름"],
-      quantity: "1~2장",
-    },
-    HeatRashPowder: {
-      type: "SummerGear",
-      productName: "땀띠 파우더 / 베이비파우더",
-      price: 5000,
-      priceRange: "3,000~8,000원",
-      hasPriority: "Recommended",
-      indicatedForCondition: ["SensitiveSkin"],
-      indicatedForSituation: ["SummerEnlistment"],
-      description: "땀띠·피부 쓸림 예방. 군복 마찰 부위에 사용.",
-      tip: "허벅지 안쪽, 겨드랑이 등 마찰 부위에 바르면 땀띠 예방.",
-      tags: ["땀띠", "파우더", "마찰방지"],
-      quantity: "1개",
-    },
-    InsectRepellent: {
-      type: "SummerGear",
-      productName: "벌레퇴치 스프레이",
-      price: 6000,
-      priceRange: "4,000~10,000원",
-      hasPriority: "Essential",
-      indicatedForCondition: [],
-      indicatedForSituation: ["SummerEnlistment"],
-      description: "모기·벌레 퇴치. 산속 훈련 시 필수.",
-      tip: "피부에 뿌리는 타입 + 옷에 뿌리는 타입 둘 다 유용.",
-      tags: ["벌레", "모기", "야외훈련"],
-      quantity: "1~2개",
     },
 
     // ══════════════════════════════════════════════════════════

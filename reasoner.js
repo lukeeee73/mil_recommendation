@@ -7,7 +7,7 @@
  *  - 상황 조건(계절, 여자친구 등) 지원
  */
 
-class KnowledgeBase {
+var KnowledgeBase = class KnowledgeBase {
   constructor(userInput) {
     const { height, weight, footSize, budget, conditions, situations } = userInput;
 
@@ -86,12 +86,12 @@ class KnowledgeBase {
   getRecommendations() {
     return Array.from(this._recommendations.values());
   }
-}
+};
 
 /* =========================================================
    추론 엔진
    ========================================================= */
-class Reasoner {
+var Reasoner = class Reasoner {
   constructor(ontology) {
     this.ontology = ontology;
     this.individuals = Object.entries(ontology.individuals).map(([id, ind]) => ({
@@ -183,10 +183,10 @@ class Reasoner {
     const productIdx = chain.indexOf("Product");
     return productIdx > 0 ? chain[productIdx - 1] : prod.type;
   }
-}
+};
 
 /* 카테고리 메타 */
-const CATEGORY_META = {
+var CATEGORY_META = {
   BasicLiving:      { label: "기본 생활용품",     icon: "🏠" },
   Hygiene:          { label: "위생용품",          icon: "🧼" },
   Medicine:         { label: "의약품",            icon: "💊" },
@@ -202,14 +202,16 @@ const CATEGORY_META = {
   LetterWriting:    { label: "편지 / 소통",       icon: "💌" },
   Stationery:       { label: "문구 / 필기",       icon: "✏️" },
   HealthSupplement: { label: "건강보조식품",       icon: "💪" },
-  WinterGear:       { label: "방한용품 (겨울)",    icon: "🧣" },
-  SummerGear:       { label: "여름용품",           icon: "☀️" },
+  SpringGear:       { label: "봄용품 (3~5월)",      icon: "🌸" },
+  SummerGear:       { label: "여름용품 (6~8월)",    icon: "☀️" },
+  FallGear:         { label: "가을용품 (9~11월)",   icon: "🍂" },
+  WinterGear:       { label: "방한용품 (12~2월)",   icon: "🧣" },
   Convenience:      { label: "편의용품",           icon: "🔧" },
   Snacks:           { label: "간식 / 식품",        icon: "🍫" },
   MentalHealth:     { label: "정신건강 / 취미",    icon: "📖" },
 };
 
-const CONDITION_LABEL = {
+var CONDITION_LABEL = {
   FlatFoot:       "평발",
   KneeIssue:      "무릎통증",
   BackIssue:      "허리통증",
@@ -225,13 +227,15 @@ const CONDITION_LABEL = {
   Allergies:      "알레르기",
 };
 
-const SITUATION_LABEL = {
-  WinterEnlistment: "겨울입대",
+var SITUATION_LABEL = {
+  SpringEnlistment: "봄입대",
   SummerEnlistment: "여름입대",
+  FallEnlistment:   "가을입대",
+  WinterEnlistment: "겨울입대",
   HasGirlfriend:    "여자친구있음",
 };
 
-const BODY_LABEL = {
+var BODY_LABEL = {
   Underweight:  "저체중",
   NormalWeight: "정상",
   Overweight:   "과체중",

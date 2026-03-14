@@ -149,8 +149,8 @@ main {
   gap: 10px;
 }
 
-.season-grid {
-  grid-template-columns: repeat(2, 1fr);
+.quarter-grid {
+  grid-template-columns: repeat(4, 1fr);
 }
 
 .checkbox-item {
@@ -585,6 +585,7 @@ footer {
   header h1 { font-size: 1.5rem; }
   .form-grid { grid-template-columns: 1fr; }
   .checkbox-grid { grid-template-columns: repeat(2, 1fr); }
+  .quarter-grid { grid-template-columns: repeat(2, 1fr); }
   .card { padding: 20px 16px; }
   .category-header { padding: 14px 16px; }
   .checklist-item { padding: 14px 16px; }
