@@ -3,15 +3,15 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>군입대 준비물 추천 🪖</title>
+  <title>군입대 준비물 체크리스트</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <header>
     <div class="header-inner">
       <span class="logo">🪖</span>
-      <h1>군입대 준비물 추천</h1>
-      <p class="subtitle">키·몸무게·예산을 입력하면 맞춤 준비물을 추천해드려요</p>
+      <h1>군입대 준비물 체크리스트</h1>
+      <p class="subtitle">내 상황에 맞는 입대 준비물을 한눈에 확인하세요</p>
     </div>
   </header>
 
@@ -31,7 +31,7 @@
           </div>
           <div class="form-group">
             <label for="budget">예산 (원)</label>
-            <input type="number" id="budget" min="0" step="1000" placeholder="예: 50000" required />
+            <input type="number" id="budget" min="0" step="1000" placeholder="예: 200000" required />
           </div>
           <div class="form-group">
             <label for="footSize">발 사이즈 (mm)</label>
@@ -39,8 +39,35 @@
           </div>
         </div>
 
+        <!-- 입대 시기 -->
         <div class="checkbox-group">
-          <p class="checkbox-label">특이사항 (해당 항목 선택)</p>
+          <p class="checkbox-label">입대 시기</p>
+          <div class="checkbox-grid season-grid">
+            <label class="checkbox-item">
+              <input type="radio" name="season" value="SummerEnlistment" />
+              <span>여름 입대 (4~9월)</span>
+            </label>
+            <label class="checkbox-item">
+              <input type="radio" name="season" value="WinterEnlistment" />
+              <span>겨울 입대 (10~3월)</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- 상황 -->
+        <div class="checkbox-group">
+          <p class="checkbox-label">해당 상황 선택</p>
+          <div class="checkbox-grid">
+            <label class="checkbox-item">
+              <input type="checkbox" name="situations" value="HasGirlfriend" />
+              <span>여자친구 있음</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- 건강 상태 -->
+        <div class="checkbox-group">
+          <p class="checkbox-label">건강 / 신체 특이사항 (해당 항목 모두 선택)</p>
           <div class="checkbox-grid">
             <label class="checkbox-item">
               <input type="checkbox" name="conditions" value="FlatFoot" />
@@ -66,32 +93,70 @@
               <input type="checkbox" name="conditions" value="DryEyes" />
               <span>안구건조증</span>
             </label>
+            <label class="checkbox-item">
+              <input type="checkbox" name="conditions" value="SensitiveSkin" />
+              <span>민감성 피부</span>
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" name="conditions" value="SweatyFeet" />
+              <span>발에 땀 많음</span>
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" name="conditions" value="WeakStomach" />
+              <span>소화 약함</span>
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" name="conditions" value="Acne" />
+              <span>여드름</span>
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" name="conditions" value="WearsGlasses" />
+              <span>안경 착용</span>
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" name="conditions" value="FrequentCramps" />
+              <span>쥐 잘 남</span>
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" name="conditions" value="Allergies" />
+              <span>알레르기 체질</span>
+            </label>
           </div>
         </div>
 
-        <button type="submit" class="btn-primary">추천 받기</button>
+        <button type="submit" class="btn-primary">체크리스트 생성</button>
       </form>
     </section>
 
     <!-- 결과 섹션 -->
     <section id="results" class="results-section hidden">
       <div class="results-header">
-        <h2>맞춤 추천 결과</h2>
+        <h2>나의 맞춤 체크리스트</h2>
+        <div id="profileSummary" class="profile-summary"></div>
         <div id="budgetSummary" class="budget-summary"></div>
       </div>
       <div id="resultCards" class="result-categories"></div>
       <div id="budgetWarning" class="budget-warning hidden">
-        ⚠️ 예산이 부족합니다. 필수 품목 위주로 구매하거나 예산을 늘려보세요.
+        예산이 부족합니다. 필수 품목 위주로 우선 준비하세요.
+      </div>
+      <div class="checklist-footer card">
+        <h3>체크리스트 활용 팁</h3>
+        <ul>
+          <li>필수 품목부터 우선 구매하세요.</li>
+          <li>PX(매점)에서도 기본 물품 구매 가능하지만, 입대 초기엔 여유가 없습니다.</li>
+          <li>부대마다 반입 가능 품목이 다를 수 있으니 입영 안내문을 확인하세요.</li>
+          <li>너무 많이 가져가면 짐이 됩니다. 필수 위주로 준비하고 나머진 면회 때 받으세요.</li>
+        </ul>
       </div>
     </section>
   </main>
 
   <footer>
-    <p>* 추천 가격은 예상 가격이며 실제 구매가와 다를 수 있습니다.</p>
-    <p>* 의료적 상태는 반드시 군의관과 상담하세요.</p>
+    <p>* 표시된 가격은 예상 가격대이며 실제 구매가와 다를 수 있습니다.</p>
+    <p>* 부대별로 반입 가능 품목이 다를 수 있으니 입영 안내문을 꼭 확인하세요.</p>
+    <p>* 의료적 문제는 반드시 군의관과 상담하세요.</p>
   </footer>
 
-  <!-- 추론은 서버에서 처리. 프론트엔드는 UI와 API 호출만 담당 -->
   <script src="app.js"></script>
 </body>
 </html>
