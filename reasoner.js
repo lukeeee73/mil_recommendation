@@ -7,7 +7,7 @@
  *  - 상황 조건(계절, 여자친구 등) 지원
  */
 
-class KnowledgeBase {
+var KnowledgeBase = class KnowledgeBase {
   constructor(userInput) {
     const { height, weight, footSize, budget, conditions, situations } = userInput;
 
@@ -86,12 +86,12 @@ class KnowledgeBase {
   getRecommendations() {
     return Array.from(this._recommendations.values());
   }
-}
+};
 
 /* =========================================================
    추론 엔진
    ========================================================= */
-class Reasoner {
+var Reasoner = class Reasoner {
   constructor(ontology) {
     this.ontology = ontology;
     this.individuals = Object.entries(ontology.individuals).map(([id, ind]) => ({
@@ -183,10 +183,10 @@ class Reasoner {
     const productIdx = chain.indexOf("Product");
     return productIdx > 0 ? chain[productIdx - 1] : prod.type;
   }
-}
+};
 
 /* 카테고리 메타 */
-const CATEGORY_META = {
+var CATEGORY_META = {
   BasicLiving:      { label: "기본 생활용품",     icon: "🏠" },
   Hygiene:          { label: "위생용품",          icon: "🧼" },
   Medicine:         { label: "의약품",            icon: "💊" },
@@ -209,7 +209,7 @@ const CATEGORY_META = {
   MentalHealth:     { label: "정신건강 / 취미",    icon: "📖" },
 };
 
-const CONDITION_LABEL = {
+var CONDITION_LABEL = {
   FlatFoot:       "평발",
   KneeIssue:      "무릎통증",
   BackIssue:      "허리통증",
@@ -225,13 +225,13 @@ const CONDITION_LABEL = {
   Allergies:      "알레르기",
 };
 
-const SITUATION_LABEL = {
+var SITUATION_LABEL = {
   WinterEnlistment: "겨울입대",
   SummerEnlistment: "여름입대",
   HasGirlfriend:    "여자친구있음",
 };
 
-const BODY_LABEL = {
+var BODY_LABEL = {
   Underweight:  "저체중",
   NormalWeight: "정상",
   Overweight:   "과체중",
