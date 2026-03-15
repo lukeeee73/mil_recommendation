@@ -74,6 +74,7 @@ var ONTOLOGY = {
     Convenience:      { superClass: "Product" },   // 편의용품
     Snacks:           { superClass: "Product" },   // 간식/식품
     MentalHealth:     { superClass: "Product" },   // 정신건강/취미
+    PersonalEssentials: { superClass: "Product" }, // 필참 지참물 (구매 불필요)
 
     // 우선도
     PriorityLevel:    { superClass: "Thing" },
@@ -123,42 +124,6 @@ var ONTOLOGY = {
     // ══════════════════════════════════════════════════════════
     //  기본 생활용품 (BasicLiving)
     // ══════════════════════════════════════════════════════════
-    Towels: {
-      type: "BasicLiving",
-      productName: "수건",
-      price: 10000,
-      priceRange: "5,000~15,000원",
-      hasPriority: "Essential",
-      indicatedForCondition: [],
-      description: "세면·샤워·훈련 후 사용. 빨리 마르는 극세사 소재 추천.",
-      tip: "최소 3장 이상 준비. 빨래 후 건조 시간을 고려하면 넉넉할수록 좋음.",
-      tags: ["세면", "필수", "극세사"],
-      quantity: "3~5장",
-    },
-    Underwear: {
-      type: "BasicLiving",
-      productName: "속옷 (면 소재)",
-      price: 20000,
-      priceRange: "15,000~30,000원 (5벌 기준)",
-      hasPriority: "Essential",
-      indicatedForCondition: [],
-      description: "면 소재 권장. 군에서 지급하지만 개인 속옷이 편함.",
-      tip: "검정 또는 군녹색 위주. 화려한 색상은 피할 것.",
-      tags: ["의류", "면소재", "필수"],
-      quantity: "5~7벌",
-    },
-    Socks: {
-      type: "BasicLiving",
-      productName: "양말 (기능성/면)",
-      price: 15000,
-      priceRange: "10,000~20,000원 (5켤레 기준)",
-      hasPriority: "Essential",
-      indicatedForCondition: [],
-      description: "두꺼운 면양말 또는 기능성 양말. 군화와 함께 발 보호 핵심.",
-      tip: "발에 땀이 많으면 항균 기능성 양말 추천. 행군용은 두꺼운 쿠션양말이 좋음.",
-      tags: ["의류", "발관리", "필수"],
-      quantity: "5~7켤레",
-    },
     ToothbrushSet: {
       type: "BasicLiving",
       productName: "칫솔 + 치약 세트",
@@ -182,30 +147,6 @@ var ONTOLOGY = {
       tip: "큰 용기는 불편함. 100~200ml 소형 또는 올인원 추천. 리필용 파우치도 좋음.",
       tags: ["세면", "소형", "필수"],
       quantity: "각 1~2개",
-    },
-    LaundrySupplies: {
-      type: "BasicLiving",
-      productName: "빨래비누 / 세탁세제",
-      price: 5000,
-      priceRange: "3,000~8,000원",
-      hasPriority: "Essential",
-      indicatedForCondition: [],
-      description: "손빨래용 세탁비누 필수. 세탁기 사용 시 소량 세제도.",
-      tip: "빨래비누 1~2개면 한 달은 충분. 액체세제보다 고체비누가 군 생활에 실용적.",
-      tags: ["빨래", "생활", "필수"],
-      quantity: "1~2개",
-    },
-    ClothesHangers: {
-      type: "BasicLiving",
-      productName: "접이식 옷걸이",
-      price: 5000,
-      priceRange: "3,000~7,000원",
-      hasPriority: "Recommended",
-      indicatedForCondition: [],
-      description: "빨래 건조용. 접이식이면 공간 절약.",
-      tip: "빨래줄 + 집게와 함께 세트로 준비하면 편리.",
-      tags: ["빨래", "건조", "생활"],
-      quantity: "5~10개",
     },
     WetWipes: {
       type: "BasicLiving",
@@ -258,18 +199,6 @@ var ONTOLOGY = {
     // ══════════════════════════════════════════════════════════
     //  위생용품 (Hygiene)
     // ══════════════════════════════════════════════════════════
-    NailClipperSet: {
-      type: "Hygiene",
-      productName: "손발톱 깎이 세트",
-      price: 5000,
-      priceRange: "3,000~8,000원",
-      hasPriority: "Essential",
-      indicatedForCondition: [],
-      description: "손톱·발톱 정기 관리 필수. 세트 구성이 편리.",
-      tip: "발톱 깎이는 크기가 좀 큰 것이 발톱 깎기 편함.",
-      tags: ["위생", "관리", "필수"],
-      quantity: "1세트",
-    },
     RazorSet: {
       type: "Hygiene",
       productName: "면도기 + 면도크림",
@@ -281,17 +210,6 @@ var ONTOLOGY = {
       tip: "일회용보단 교체날 면도기가 경제적. 면도크림/폼은 소형 준비.",
       tags: ["면도", "위생", "매일"],
       quantity: "면도기 1개 + 교체날 여분 + 면도크림 1개",
-    },
-    EarPick: {
-      type: "Hygiene",
-      productName: "귀이개",
-      price: 2000,
-      priceRange: "1,000~3,000원",
-      hasPriority: "Recommended",
-      indicatedForCondition: [],
-      description: "면봉 대신 귀이개 선호하는 경우.",
-      tags: ["위생", "관리"],
-      quantity: "1개",
     },
     Deodorant: {
       type: "Hygiene",
@@ -770,32 +688,6 @@ var ONTOLOGY = {
       tags: ["편지지", "봉투", "소통"],
       quantity: "1~2세트 (20~30장)",
     },
-    AddressBook: {
-      type: "LetterWriting",
-      productName: "주소록 수첩",
-      price: 3000,
-      priceRange: "2,000~5,000원",
-      hasPriority: "Recommended",
-      indicatedForCondition: [],
-      indicatedForSituation: ["HasGirlfriend"],
-      description: "가족·친구·연인 주소 기록용. 폰 없으면 주소 모름.",
-      tip: "입대 전 반드시 중요한 사람들 주소를 적어갈 것! 핸드폰 사용 제한 시 유일한 방법.",
-      tags: ["주소", "연락처", "필수"],
-      quantity: "1개",
-    },
-    PrintedPhotos: {
-      type: "LetterWriting",
-      productName: "인화 사진 (가족/연인)",
-      price: 5000,
-      priceRange: "3,000~10,000원",
-      hasPriority: "Optional",
-      indicatedForCondition: [],
-      indicatedForSituation: ["HasGirlfriend"],
-      description: "사랑하는 사람들 사진. 힘들 때 보면서 힘 얻기.",
-      tip: "지갑 사이즈 + 여권 사이즈로 여러 장 인화. 방수 코팅하면 오래감.",
-      tags: ["사진", "인화", "추억"],
-      quantity: "5~10장",
-    },
     Postcards: {
       type: "LetterWriting",
       productName: "엽서 세트",
@@ -951,19 +843,6 @@ var ONTOLOGY = {
     // ══════════════════════════════════════════════════════════
     //  봄용품 (SpringGear) — 봄 입대 시 (3~5월)
     // ══════════════════════════════════════════════════════════
-    SpringJacketLayer: {
-      type: "SpringGear",
-      productName: "얇은 이너 (봄용 내복)",
-      price: 12000,
-      priceRange: "8,000~18,000원",
-      hasPriority: "Recommended",
-      indicatedForCondition: [],
-      indicatedForSituation: ["SpringEnlistment"],
-      description: "봄 일교차 대비. 아침·저녁은 춥고 낮은 따뜻함.",
-      tip: "얇은 기능성 내의 1~2벌이면 충분. 두꺼운 겨울 내복은 불필요.",
-      tags: ["봄", "일교차", "이너"],
-      quantity: "1~2벌",
-    },
     SpringAllergyMask: {
       type: "SpringGear",
       productName: "황사/꽃가루 마스크",
@@ -994,19 +873,6 @@ var ONTOLOGY = {
     // ══════════════════════════════════════════════════════════
     //  여름용품 (SummerGear) — 여름 입대 시 (6~8월)
     // ══════════════════════════════════════════════════════════
-    CoolingSleeves: {
-      type: "SummerGear",
-      productName: "쿨토시 / 쿨링 암슬리브",
-      price: 6000,
-      priceRange: "4,000~10,000원",
-      hasPriority: "Recommended",
-      indicatedForCondition: [],
-      indicatedForSituation: ["SummerEnlistment"],
-      description: "자외선 차단 + 쿨링 효과. 야외 훈련 시 팔 보호.",
-      tip: "자외선 차단 기능이 있는 쿨토시가 선크림 보조로 좋음.",
-      tags: ["쿨토시", "자외선", "쿨링"],
-      quantity: "1~2쌍",
-    },
     CoolingTowel: {
       type: "SummerGear",
       productName: "쿨링 타올",
@@ -1158,47 +1024,9 @@ var ONTOLOGY = {
       tags: ["핫팩", "방한", "필수"],
       quantity: "20~30개",
     },
-    WinterSocks: {
-      type: "WinterGear",
-      productName: "방한 양말 (두꺼운)",
-      price: 12000,
-      priceRange: "8,000~18,000원 (3켤레)",
-      hasPriority: "Recommended",
-      indicatedForCondition: [],
-      indicatedForSituation: ["WinterEnlistment"],
-      description: "겨울 발 보온용. 울/기능성 소재 두꺼운 양말.",
-      tip: "발이 따뜻해야 전체가 따뜻함. 등산용 양말도 좋음.",
-      tags: ["양말", "방한", "보온"],
-      quantity: "3~5켤레",
-    },
-
     // ══════════════════════════════════════════════════════════
     //  편의용품 (Convenience)
     // ══════════════════════════════════════════════════════════
-    SewingKit: {
-      type: "Convenience",
-      productName: "재봉 세트 (바늘 + 실)",
-      price: 3000,
-      priceRange: "2,000~5,000원",
-      hasPriority: "Essential",
-      indicatedForCondition: [],
-      description: "군복·단추 수선용. 단추 떨어지면 바로 달아야 함.",
-      tip: "검정/카키 실 포함 미니 세트. 실 색상 군복에 맞추기.",
-      tags: ["재봉", "수선", "단추"],
-      quantity: "1세트",
-    },
-    ClotheslineClips: {
-      type: "Convenience",
-      productName: "빨래줄 + 빨래집게",
-      price: 5000,
-      priceRange: "3,000~7,000원",
-      hasPriority: "Recommended",
-      indicatedForCondition: [],
-      description: "생활관 내 빨래 건조용.",
-      tip: "접이식 빨래줄이 편리. 집게는 바람에 날리지 않는 타입으로.",
-      tags: ["빨래", "건조", "생활"],
-      quantity: "줄 1개 + 집게 10~20개",
-    },
     DigitalWatch: {
       type: "Convenience",
       productName: "전자시계 (군용)",
@@ -1246,30 +1074,6 @@ var ONTOLOGY = {
       tip: "무선 이어폰은 분실 위험. 유선이 군 생활에 더 적합.",
       tags: ["이어폰", "유선", "여가"],
       quantity: "1~2개",
-    },
-    MiniFlashlight: {
-      type: "Convenience",
-      productName: "소형 손전등 / 헤드랜턴",
-      price: 10000,
-      priceRange: "5,000~15,000원",
-      hasPriority: "Recommended",
-      indicatedForCondition: [],
-      description: "야간 이동, 불침번, 비상 시 사용.",
-      tip: "소형 LED 손전등 또는 미니 헤드랜턴. 불침번 때 유용.",
-      tags: ["손전등", "야간", "비상"],
-      quantity: "1개",
-    },
-    Carabiner: {
-      type: "Convenience",
-      productName: "카라비너 (다용도 고리)",
-      price: 3000,
-      priceRange: "2,000~5,000원",
-      hasPriority: "Optional",
-      indicatedForCondition: [],
-      description: "물통·열쇠 등 소지품 고정용.",
-      tip: "군장에 물건 달 때, 열쇠 관리할 때 편리.",
-      tags: ["카라비너", "고정", "다용도"],
-      quantity: "2~3개",
     },
     WaterproofPouch: {
       type: "Convenience",
@@ -1365,6 +1169,83 @@ var ONTOLOGY = {
     },
   },
 
+    // ══════════════════════════════════════════════════════════
+    //  필참 지참물 (PersonalEssentials) — 구매 불필요, 개인 보유
+    // ══════════════════════════════════════════════════════════
+    Smartphone: {
+      type: "PersonalEssentials",
+      productName: "스마트폰",
+      price: 0,
+      priceRange: "개인 보유",
+      hasPriority: "Essential",
+      indicatedForCondition: [],
+      description: "외박·휴가 시 연락 수단. 개인 소유 기기 지참.",
+      tip: "입소 전 중요한 연락처와 주소를 미리 메모해 두거나 저장해 갈 것.",
+      tags: ["스마트폰", "연락", "필수"],
+      quantity: "1개",
+    },
+    SmartphoneCharger: {
+      type: "PersonalEssentials",
+      productName: "스마트폰 충전기 + 케이블",
+      price: 0,
+      priceRange: "개인 보유",
+      hasPriority: "Essential",
+      indicatedForCondition: [],
+      description: "핸드폰 충전을 위한 충전기와 케이블.",
+      tip: "케이블은 여분으로 1~2개 더 챙길 것. 분실·파손이 잦음.",
+      tags: ["충전기", "케이블", "필수"],
+      quantity: "충전기 1개 + 케이블 2개",
+    },
+    Wallet: {
+      type: "PersonalEssentials",
+      productName: "지갑 + 현금",
+      price: 0,
+      priceRange: "개인 보유",
+      hasPriority: "Essential",
+      indicatedForCondition: [],
+      description: "PX 이용, 긴급 상황 대비 현금 필수.",
+      tip: "현금 최소 5만원 이상 준비 권장. 카드도 함께 지참.",
+      tags: ["지갑", "현금", "필수"],
+      quantity: "현금 5만원 이상",
+    },
+    EnlistmentNotice: {
+      type: "PersonalEssentials",
+      productName: "입영통지서 (종이 또는 모바일)",
+      price: 0,
+      priceRange: "개인 보유",
+      hasPriority: "Essential",
+      indicatedForCondition: [],
+      description: "입소 시 반드시 지참. 종이 통지서 또는 모바일 앱 확인.",
+      tip: "모바일은 스크린샷 백업 필수. 종이도 함께 챙기면 안심.",
+      tags: ["입영통지서", "서류", "필수"],
+      quantity: "1부",
+    },
+    NationalIdCard: {
+      type: "PersonalEssentials",
+      productName: "신분증 (주민등록증)",
+      price: 0,
+      priceRange: "개인 보유",
+      hasPriority: "Essential",
+      indicatedForCondition: [],
+      description: "입소 시 필수 제출 서류.",
+      tip: "운전면허증도 가능하지만 주민등록증이 기본.",
+      tags: ["신분증", "서류", "필수"],
+      quantity: "1개",
+    },
+    EmergencyContacts: {
+      type: "PersonalEssentials",
+      productName: "가족·비상연락처 메모",
+      price: 0,
+      priceRange: "개인 보유",
+      hasPriority: "Essential",
+      indicatedForCondition: [],
+      description: "핸드폰 분실·고장 대비 종이에 적어서 보관.",
+      tip: "부모님, 형제, 가까운 지인 등 최소 3~5명의 연락처를 종이에 적어갈 것.",
+      tags: ["연락처", "비상", "필수"],
+      quantity: "1장",
+    },
+  },
+
   /* =========================================================
      5. 추론 규칙
      ========================================================= */
@@ -1422,11 +1303,19 @@ var ONTOLOGY = {
       then: (kb, prod) => kb.recommend(prod, "situationMatch"),
     },
 
+    // ── 필참 지참물 항상 추천 ───────────────────────────────
+    {
+      id: "R-PERSONAL-ESSENTIALS",
+      label: "필참 지참물 (구매 불필요) 항상 추천",
+      when: (kb, prod) => prod.type === "PersonalEssentials",
+      then: (kb, prod) => kb.recommend(prod, "personalEssential"),
+    },
+
     // ── 필수 품목 자동 추천 ─────────────────────────────────
     {
       id: "R-PROD-ESSENTIAL",
       label: "필수 준비물 기본 추천",
-      when: (kb, prod) => prod.hasPriority === "Essential" && !(prod.indicatedForSituation || []).length,
+      when: (kb, prod) => prod.hasPriority === "Essential" && !(prod.indicatedForSituation || []).length && prod.type !== "PersonalEssentials",
       then: (kb, prod) => kb.recommend(prod, "essential"),
     },
 
@@ -1463,7 +1352,7 @@ var ONTOLOGY = {
       id: "R-GIRLFRIEND-LETTER",
       label: "여자친구 있음 → 편지용품 필수 격상",
       when: (kb, prod) =>
-        ["Stamps", "LetterSet", "AddressBook"].includes(prod._id) &&
+        ["Stamps", "LetterSet"].includes(prod._id) &&
         kb.hasSituation("HasGirlfriend"),
       then: (kb, prod) => kb.upgradePriority(prod, "Essential", "R-GIRLFRIEND-LETTER"),
     },
