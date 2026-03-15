@@ -223,7 +223,10 @@ function checklistItemHTML({ prod, priority, reasons, withinBudget }, COND_LBL, 
           <div class="item-meta">
             ${quantityHtml}
           </div>
-          <span class="item-price">${prod.priceRange || `약 ${prod.price.toLocaleString()}원`}</span>
+          ${prod.priceRange === "개인 보유"
+            ? '<span class="badge badge-personal">개인 보유</span>'
+            : `<span class="item-price">${prod.priceRange || `약 ${prod.price.toLocaleString()}원`}</span>`
+          }
         </div>
       </div>
     </div>

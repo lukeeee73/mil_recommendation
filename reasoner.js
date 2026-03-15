@@ -149,7 +149,9 @@ var Reasoner = class Reasoner {
     const overBudget = [];
 
     for (const entry of sorted) {
-      if (remaining >= entry.prod.price) {
+      if (entry.prod.price === 0) {
+        affordable.push({ ...entry, withinBudget: true });
+      } else if (remaining >= entry.prod.price) {
         remaining -= entry.prod.price;
         affordable.push({ ...entry, withinBudget: true });
       } else {
@@ -209,6 +211,7 @@ var CATEGORY_META = {
   Convenience:      { label: "편의용품",           icon: "🔧" },
   Snacks:           { label: "간식 / 식품",        icon: "🍫" },
   MentalHealth:     { label: "정신건강 / 취미",    icon: "📖" },
+  PersonalEssentials: { label: "필참 지참물 (구매 불필요)", icon: "🎒" },
 };
 
 var CONDITION_LABEL = {

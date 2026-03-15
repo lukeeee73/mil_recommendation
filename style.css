@@ -467,6 +467,7 @@ main {
 .badge-recommended { background: #e3f0fa; color: var(--recommended); }
 .badge-optional { background: #f0f0f0; color: var(--optional); }
 .badge-over { background: #ffc107; color: #5a4000; }
+.badge-personal { background: #e8f5e9; color: #2e7d32; font-weight: 600; font-size: 0.75rem; padding: 2px 8px; border-radius: 4px; }
 
 /* 매칭 태그 */
 .match-tags {
