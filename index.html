@@ -18,7 +18,7 @@
 
   <main>
     <!-- 입력 폼 -->
-    <section class="form-section card">
+    <section id="formSection" class="form-section card">
       <h2>내 정보 입력</h2>
       <form id="userForm">
         <div class="form-grid">
@@ -140,7 +140,10 @@
     <!-- 결과 섹션 -->
     <section id="results" class="results-section hidden">
       <div class="results-header">
-        <h2>나의 맞춤 체크리스트</h2>
+        <div class="results-title-row">
+          <h2>나의 맞춤 체크리스트</h2>
+          <button id="backToForm" class="btn-secondary">← 다시 입력하기</button>
+        </div>
         <div id="profileSummary" class="profile-summary"></div>
         <div id="budgetSummary" class="budget-summary"></div>
       </div>

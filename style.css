@@ -225,6 +225,40 @@ main {
   padding: 24px 28px;
 }
 
+.results-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.results-title-row h2 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--army-green);
+  margin-bottom: 0;
+}
+
+.btn-secondary {
+  padding: 8px 16px;
+  background: transparent;
+  color: var(--army-green);
+  border: 2px solid var(--army-green);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+
+.btn-secondary:hover {
+  background: var(--army-green);
+  color: white;
+}
+
 .results-header h2 {
   font-size: 1.25rem;
   font-weight: 700;

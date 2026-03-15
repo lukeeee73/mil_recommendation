@@ -7,6 +7,13 @@
 
 const reasoner = new Reasoner(ONTOLOGY);
 
+// ── 뷰 전환 ───────────────────────────────────────────────
+document.getElementById("backToForm").addEventListener("click", function () {
+  document.getElementById("results").classList.add("hidden");
+  document.getElementById("formSection").classList.remove("hidden");
+  window.scrollTo({ top: 0, behavior: "smooth" });
+});
+
 // ── 폼 제출 ───────────────────────────────────────────────
 document.getElementById("userForm").addEventListener("submit", function (e) {
   e.preventDefault();
@@ -49,8 +56,10 @@ document.getElementById("userForm").addEventListener("submit", function (e) {
     },
   });
 
-  document.getElementById("results").classList.remove("hidden");
-  document.getElementById("results").scrollIntoView({ behavior: "smooth" });
+  document.getElementById("formSection").classList.add("hidden");
+  var resultsEl = document.getElementById("results");
+  resultsEl.classList.remove("hidden");
+  window.scrollTo({ top: 0, behavior: "smooth" });
 });
 
 // ── 결과 렌더링 ───────────────────────────────────────────
