@@ -121,39 +121,66 @@ function renderBudgetBar(budget, totalCost, remaining) {
 }
 
 function renderChecklist(entries, CAT_META, COND_LBL, SIT_LBL) {
-  const container = document.getElementById("resultCards");
+  var container = document.getElementById("resultCards");
   container.innerHTML = "";
 
   // 카테고리별 그룹핑
-  const groups = new Map();
-  for (const entry of entries) {
-    const catKey = entry.prod.type;
+  var groups = new Map();
+  for (var i = 0; i < entries.length; i++) {
+    var entry = entries[i];
+    var catKey = entry.prod.type;
     if (!groups.has(catKey)) groups.set(catKey, []);
     groups.get(catKey).push(entry);
   }
 
-  for (const [catKey, items] of groups) {
-    const meta = CAT_META[catKey] || { label: catKey, icon: "📦" };
-    const section = document.createElement("div");
+  groups.forEach(function (items, catKey) {
+    var meta = CAT_META[catKey] || { label: catKey, icon: "📦" };
+    var section = document.createElement("div");
     section.className = "result-category";
 
-    const essentialInCat = items.filter(e => e.priority === "Essential").length;
-    const countBadge = essentialInCat > 0
-      ? `<span class="cat-count essential-count">필수 ${essentialInCat}</span>`
-      : "";
+    var essentialInCat = items.filter(function (e) { return e.priority === "Essential"; }).length;
+    var recommendedInCat = items.filter(function (e) { return e.priority === "Recommended"; }).length;
+    var catSubtotal = items.reduce(function (sum, e) { return sum + (e.prod.price || 0); }, 0);
 
-    section.innerHTML = `
-      <div class="category-header">
-        <span class="category-icon">${meta.icon}</span>
-        <h3>${meta.label}</h3>
-        ${countBadge}
-        <span class="cat-count total-count">${items.length}개</span>
-      </div>
-      <div class="category-items">
-        ${items.map((e) => checklistItemHTML(e, COND_LBL, SIT_LBL)).join("")}
-      </div>
-    `;
+    var summaryParts = [];
+    if (essentialInCat > 0) summaryParts.push('<span class="cat-count essential-count">필수 ' + essentialInCat + '</span>');
+    if (recommendedInCat > 0) summaryParts.push('<span class="cat-count recommended-count">추천 ' + recommendedInCat + '</span>');
+
+    var itemNames = items.map(function (e) { return e.prod.productName; }).join(", ");
+
+    section.innerHTML =
+      '<div class="category-header" onclick="toggleCategory(this)">' +
+        '<span class="category-icon">' + meta.icon + '</span>' +
+        '<h3>' + meta.label + '</h3>' +
+        summaryParts.join("") +
+        '<span class="cat-count total-count">' + items.length + '개</span>' +
+        '<span class="cat-subtotal">' + catSubtotal.toLocaleString() + '원</span>' +
+        '<span class="category-chevron">▸</span>' +
+      '</div>' +
+      '<div class="category-preview">' +
+        '<span class="preview-items">' + itemNames + '</span>' +
+      '</div>' +
+      '<div class="category-items collapsed">' +
+        items.map(function (e) { return checklistItemHTML(e, COND_LBL, SIT_LBL); }).join("") +
+      '</div>';
     container.appendChild(section);
+  });
+}
+
+function toggleCategory(header) {
+  var section = header.parentElement;
+  var items = section.querySelector(".category-items");
+  var preview = section.querySelector(".category-preview");
+  var isOpen = !items.classList.contains("collapsed");
+
+  if (isOpen) {
+    items.classList.add("collapsed");
+    preview.classList.remove("collapsed");
+    section.classList.remove("expanded");
+  } else {
+    items.classList.remove("collapsed");
+    preview.classList.add("collapsed");
+    section.classList.add("expanded");
   }
 }
 
