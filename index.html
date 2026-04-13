@@ -34,10 +34,6 @@
             <label for="budget">예산 (원)</label>
             <input type="number" id="budget" min="0" step="any" placeholder="예: 200000" required />
           </div>
-          <div class="form-group">
-            <label for="footSize">발 사이즈 (mm)</label>
-            <input type="number" id="footSize" min="220" max="300" step="any" placeholder="예: 270" required />
-          </div>
         </div>
 
         <!-- 입대 시기 -->
@@ -142,8 +138,12 @@
       <div class="results-header">
         <div class="results-title-row">
           <h2>나의 맞춤 체크리스트</h2>
-          <button id="backToForm" class="btn-secondary">← 다시 입력하기</button>
+          <div class="results-actions">
+            <button id="shareLink" class="btn-secondary" type="button">🔗 공유</button>
+            <button id="backToForm" class="btn-secondary" type="button">← 다시 입력</button>
+          </div>
         </div>
+        <div id="shareFeedback" class="share-feedback" role="status" aria-live="polite"></div>
         <div id="profileSummary" class="profile-summary"></div>
         <div id="budgetSummary" class="budget-summary"></div>
       </div>

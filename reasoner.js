@@ -9,11 +9,10 @@
 
 var KnowledgeBase = class KnowledgeBase {
   constructor(userInput) {
-    const { height, weight, footSize, budget, conditions, situations } = userInput;
+    const { height, weight, budget, conditions, situations } = userInput;
 
     this.height   = height;
     this.weight   = weight;
-    this.footSize = footSize;
     this.budget   = budget;
     this.bmi      = weight / ((height / 100) ** 2);
 

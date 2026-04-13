@@ -25,7 +25,7 @@ app.use(express.static(path.join(__dirname, "..")));
  *
  * 요청:
  *   {
- *     "height": 175, "weight": 70, "footSize": 270,
+ *     "height": 175, "weight": 70,
  *     "budget": 200000,
  *     "conditions": ["FlatFoot", "KneeIssue"],
  *     "situations": ["WinterEnlistment", "HasGirlfriend"]
@@ -35,16 +35,15 @@ app.use(express.static(path.join(__dirname, "..")));
  */
 app.post("/api/recommend", (req, res) => {
   try {
-    const { height, weight, footSize, budget, conditions, situations } = req.body;
+    const { height, weight, budget, conditions, situations } = req.body;
 
-    if (!height || !weight || !footSize || budget == null) {
-      return res.status(400).json({ error: "height, weight, footSize, budget 는 필수입니다." });
+    if (!height || !weight || budget == null) {
+      return res.status(400).json({ error: "height, weight, budget 는 필수입니다." });
     }
 
     const result = reasoner.reason({
       height:     parseFloat(height),
       weight:     parseFloat(weight),
-      footSize:   parseFloat(footSize),
       budget:     parseFloat(budget),
       conditions: Array.isArray(conditions) ? conditions : [],
       situations: Array.isArray(situations) ? situations : [],

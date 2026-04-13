@@ -178,7 +178,6 @@ Request body:
 {
   "height": 175,
   "weight": 70,
-  "footSize": 270,
   "budget": 200000,
   "conditions": ["FlatFoot", "KneeIssue"],
   "situations": ["WinterEnlistment", "HasGirlfriend"]
