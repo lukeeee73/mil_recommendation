@@ -6,6 +6,7 @@
  */
 
 const reasoner = new Reasoner(ONTOLOGY);
+const STORAGE_KEY = "milchecklist:lastInput";
 
 // ── 뷰 전환 ───────────────────────────────────────────────
 document.getElementById("backToForm").addEventListener("click", function () {
@@ -14,35 +15,86 @@ document.getElementById("backToForm").addEventListener("click", function () {
   window.scrollTo({ top: 0, behavior: "smooth" });
 });
 
-// ── 폼 제출 ───────────────────────────────────────────────
-document.getElementById("userForm").addEventListener("submit", function (e) {
-  e.preventDefault();
-
-  // 건강 조건
+// ── 상태 직렬화 (공유/저장 공용) ───────────────────────────
+function collectUserInput() {
   const conditions = Array.from(
     document.querySelectorAll('input[name="conditions"]:checked')
   ).map((el) => el.value);
 
-  // 상황 조건
-  const situations = Array.from(
+  const selectedSituations = Array.from(
     document.querySelectorAll('input[name="situations"]:checked')
   ).map((el) => el.value);
 
-  // 계절 (라디오)
   const seasonEl = document.querySelector('input[name="season"]:checked');
-  if (seasonEl) situations.push(seasonEl.value);
+  const season = seasonEl ? seasonEl.value : null;
 
-  const userInput = {
+  return {
     height:     parseFloat(document.getElementById("height").value),
     weight:     parseFloat(document.getElementById("weight").value),
-    footSize:   parseFloat(document.getElementById("footSize").value),
     budget:     parseFloat(document.getElementById("budget").value),
     conditions,
-    situations,
+    situations: selectedSituations,
+    season,
   };
+}
 
-  // 브라우저에서 직접 추론 실행
-  const result = reasoner.reason(userInput);
+function populateForm(input) {
+  if (!input) return;
+  if (Number.isFinite(input.height)) document.getElementById("height").value = input.height;
+  if (Number.isFinite(input.weight)) document.getElementById("weight").value = input.weight;
+  if (Number.isFinite(input.budget)) document.getElementById("budget").value = input.budget;
+
+  document.querySelectorAll('input[name="conditions"]').forEach(function (el) {
+    el.checked = Array.isArray(input.conditions) && input.conditions.indexOf(el.value) !== -1;
+  });
+  document.querySelectorAll('input[name="situations"]').forEach(function (el) {
+    el.checked = Array.isArray(input.situations) && input.situations.indexOf(el.value) !== -1;
+  });
+  if (input.season) {
+    const seasonEl = document.querySelector('input[name="season"][value="' + input.season + '"]');
+    if (seasonEl) seasonEl.checked = true;
+  }
+}
+
+function saveInput(input) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(input)); } catch (_) {}
+}
+
+function loadSavedInput() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch (_) { return null; }
+}
+
+// Unicode-safe base64 (Korean 텍스트 대응)
+function encodeState(input) {
+  const json = JSON.stringify(input);
+  return btoa(unescape(encodeURIComponent(json)))
+    .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+function decodeState(s) {
+  try {
+    const b64 = s.replace(/-/g, "+").replace(/_/g, "/");
+    const json = decodeURIComponent(escape(atob(b64)));
+    return JSON.parse(json);
+  } catch (_) { return null; }
+}
+
+function runRecommendation(input) {
+  const situations = (input.situations || []).slice();
+  if (input.season && situations.indexOf(input.season) === -1) {
+    situations.push(input.season);
+  }
+
+  const result = reasoner.reason({
+    height:     input.height,
+    weight:     input.weight,
+    budget:     input.budget,
+    conditions: input.conditions || [],
+    situations: situations,
+  });
 
   renderResults({
     ...result,
@@ -57,10 +109,54 @@ document.getElementById("userForm").addEventListener("submit", function (e) {
   });
 
   document.getElementById("formSection").classList.add("hidden");
-  var resultsEl = document.getElementById("results");
-  resultsEl.classList.remove("hidden");
+  document.getElementById("results").classList.remove("hidden");
   window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+// ── 폼 제출 ───────────────────────────────────────────────
+document.getElementById("userForm").addEventListener("submit", function (e) {
+  e.preventDefault();
+  const input = collectUserInput();
+  saveInput(input);
+  runRecommendation(input);
 });
+
+// ── 공유하기 ──────────────────────────────────────────────
+document.getElementById("shareLink").addEventListener("click", function () {
+  const input = collectUserInput();
+  const url = location.origin + location.pathname + "#s=" + encodeState(input);
+  const feedback = document.getElementById("shareFeedback");
+
+  const showFeedback = function (msg) {
+    feedback.textContent = msg;
+    feedback.classList.add("visible");
+    setTimeout(function () { feedback.classList.remove("visible"); }, 2200);
+  };
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(url)
+      .then(function () { showFeedback("링크 복사됨!"); })
+      .catch(function () { window.prompt("아래 링크를 복사하세요:", url); });
+  } else {
+    window.prompt("아래 링크를 복사하세요:", url);
+  }
+});
+
+// ── 초기 로드: URL 해시 → localStorage 순으로 복원 ────────
+(function initFromStoredState() {
+  const hash = location.hash || "";
+  const match = hash.match(/[#&]s=([^&]+)/);
+  if (match) {
+    const fromHash = decodeState(match[1]);
+    if (fromHash) {
+      populateForm(fromHash);
+      runRecommendation(fromHash);
+      return;
+    }
+  }
+  const saved = loadSavedInput();
+  if (saved) populateForm(saved);
+})();
 
 // ── 결과 렌더링 ───────────────────────────────────────────
 function renderResults(result) {
@@ -229,6 +325,12 @@ function checklistItemHTML({ prod, priority, reasons, withinBudget }, COND_LBL, 
     ? `<span class="item-quantity">권장: ${prod.quantity}</span>`
     : "";
 
+  const isPersonal = prod.priceRange === "개인 보유";
+  const shopQuery = encodeURIComponent(prod.productName);
+  const shopLinkHtml = isPersonal
+    ? ""
+    : `<a class="shop-link" href="https://search.shopping.naver.com/search/all?query=${shopQuery}" target="_blank" rel="noopener noreferrer" title="네이버 쇼핑에서 검색">🛒 검색</a>`;
+
   return `
     <div class="checklist-item ${withinBudget ? "" : "out-of-budget"}">
       <div class="item-main">
@@ -250,10 +352,13 @@ function checklistItemHTML({ prod, priority, reasons, withinBudget }, COND_LBL, 
           <div class="item-meta">
             ${quantityHtml}
           </div>
-          ${prod.priceRange === "개인 보유"
-            ? '<span class="badge badge-personal">개인 보유</span>'
-            : `<span class="item-price">${prod.priceRange || `약 ${prod.price.toLocaleString()}원`}</span>`
-          }
+          <div class="item-actions">
+            ${isPersonal
+              ? '<span class="badge badge-personal">개인 보유</span>'
+              : `<span class="item-price">${prod.priceRange || `약 ${prod.price.toLocaleString()}원`}</span>`
+            }
+            ${shopLinkHtml}
+          </div>
         </div>
       </div>
     </div>

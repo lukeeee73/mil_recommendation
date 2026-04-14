@@ -104,7 +104,6 @@ var ONTOLOGY = {
   dataProperties: {
     height:   { domain: "Person", range: "xsd:float", minInclusive: 140, maxInclusive: 220 },
     weight:   { domain: "Person", range: "xsd:float", minInclusive: 40, maxInclusive: 150 },
-    footSize: { domain: "Person", range: "xsd:integer", minInclusive: 220, maxInclusive: 300 },
     budget:   { domain: "Person", range: "xsd:float", minInclusive: 0 },
     bmi:      { domain: "Person", range: "xsd:float" },
     productName:   { domain: "Product", range: "xsd:string" },
