@@ -93,20 +93,33 @@ function decodeState(s) {
 }
 
 // ── 추천 실행 ─────────────────────────────────────────────
-function runRecommendation(input) {
+async function runRecommendation(input) {
   const situations = (input.situations || []).slice();
   if (input.season && situations.indexOf(input.season) === -1) {
     situations.push(input.season);
   }
 
-  // 예산 제약 없이 모든 추천을 구함
-  const result = reasoner.reason({
+  const payload = {
     height:     input.height,
     weight:     input.weight,
     budget:     null,
     conditions: input.conditions || [],
     situations: situations,
-  });
+  };
+
+  // 서버(/api/recommend)로 네이버 쇼핑 보강 시도, 실패 시 클라이언트 추론으로 폴백
+  let result;
+  try {
+    const res = await fetch("/api/recommend", {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error("server-" + res.status);
+    result = await res.json();
+  } catch (_) {
+    result = reasoner.reason(payload);
+  }
 
   baseItems = [...result.affordable, ...result.overBudget];
   baseMeta = {
