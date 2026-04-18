@@ -244,6 +244,9 @@ function renderChecklist(entries, CAT_META, COND_LBL, SIT_LBL) {
 
     var itemNames = items.map(function (e) { return e.prod.productName; }).join(", ");
 
+    var hasEssential = essentialInCat > 0;
+    if (hasEssential) section.classList.add("expanded");
+
     section.innerHTML =
       '<div class="category-header" onclick="toggleCategory(this)">' +
         '<span class="category-icon">' + meta.icon + '</span>' +
@@ -253,14 +256,65 @@ function renderChecklist(entries, CAT_META, COND_LBL, SIT_LBL) {
         '<span class="cat-subtotal">' + catSubtotal.toLocaleString() + '원</span>' +
         '<span class="category-chevron">▸</span>' +
       '</div>' +
-      '<div class="category-preview">' +
+      '<div class="category-preview' + (hasEssential ? ' collapsed' : '') + '">' +
         '<span class="preview-items">' + itemNames + '</span>' +
       '</div>' +
-      '<div class="category-items collapsed">' +
+      '<div class="category-items' + (hasEssential ? '' : ' collapsed') + '">' +
         items.map(function (e) { return checklistItemHTML(e, COND_LBL, SIT_LBL); }).join("") +
       '</div>';
     container.appendChild(section);
   });
+
+  syncToggleAllButton();
+}
+
+// ── 전체 펼치기/접기 ─────────────────────────────────────
+function setAllCategoriesExpanded(expand) {
+  var categories = document.querySelectorAll(".result-category");
+  categories.forEach(function (section) {
+    var items = section.querySelector(".category-items");
+    var preview = section.querySelector(".category-preview");
+    if (!items || !preview) return;
+    if (expand) {
+      items.classList.remove("collapsed");
+      preview.classList.add("collapsed");
+      section.classList.add("expanded");
+    } else {
+      items.classList.add("collapsed");
+      preview.classList.remove("collapsed");
+      section.classList.remove("expanded");
+    }
+  });
+  syncToggleAllButton();
+}
+
+function syncToggleAllButton() {
+  var btn = document.getElementById("toggleAll");
+  if (!btn) return;
+  var categories = document.querySelectorAll(".result-category");
+  if (categories.length === 0) return;
+  var allExpanded = Array.prototype.every.call(categories, function (s) {
+    return s.classList.contains("expanded");
+  });
+  btn.dataset.expanded = allExpanded ? "true" : "false";
+  btn.textContent = allExpanded ? "모두 접기" : "모두 펼치기";
+}
+
+(function bindToggleAll() {
+  var btn = document.getElementById("toggleAll");
+  if (!btn) return;
+  btn.addEventListener("click", function () {
+    var shouldExpand = btn.dataset.expanded !== "true";
+    setAllCategoriesExpanded(shouldExpand);
+  });
+})();
+
+function toggleItemDone(el) {
+  var item = el.closest(".checklist-item");
+  if (!item) return;
+  var isDone = item.classList.toggle("is-done");
+  el.classList.toggle("is-checked", isDone);
+  el.textContent = isDone ? "☑" : "☐";
 }
 
 function toggleCategory(header) {
@@ -278,6 +332,7 @@ function toggleCategory(header) {
     preview.classList.add("collapsed");
     section.classList.add("expanded");
   }
+  syncToggleAllButton();
 }
 
 function checklistItemHTML({ prod, priority, reasons, withinBudget }, COND_LBL, SIT_LBL) {
@@ -331,12 +386,18 @@ function checklistItemHTML({ prod, priority, reasons, withinBudget }, COND_LBL, 
     ? ""
     : `<a class="shop-link" href="https://search.shopping.naver.com/search/all?query=${shopQuery}" target="_blank" rel="noopener noreferrer" title="네이버 쇼핑에서 검색">🛒 검색</a>`;
 
+  const priorityClass = {
+    Essential:   "priority-essential",
+    Recommended: "priority-recommended",
+    Optional:    "priority-optional",
+  }[priority] || "priority-optional";
+
   return `
-    <div class="checklist-item ${withinBudget ? "" : "out-of-budget"}">
+    <div class="checklist-item ${priorityClass} ${withinBudget ? "" : "out-of-budget"}">
       <div class="item-main">
         <div class="item-header">
           <div class="item-name-wrap">
-            <span class="item-checkbox">${withinBudget ? "☑" : "☐"}</span>
+            <span class="item-checkbox" role="button" tabindex="0" aria-label="준비 완료 체크" onclick="toggleItemDone(this)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleItemDone(this);}">☐</span>
             <span class="item-name">${prod.productName}</span>
           </div>
           <div class="item-badges">
