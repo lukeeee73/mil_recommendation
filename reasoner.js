@@ -135,23 +135,33 @@ var Reasoner = class Reasoner {
   }
 
   _applyBudget(kb) {
-    const priorityOrder = { Essential: 0, Recommended: 1, Optional: 2 };
+    return this.applyBudget(kb.getRecommendations(), kb.budget);
+  }
 
-    const sorted = kb.getRecommendations().sort((a, b) => {
+  /**
+   * 예산을 기반으로 추천 목록을 affordable/overBudget 으로 분할.
+   * budget 이 null/undefined/NaN/0 이면 모두 affordable 로 처리하고 budget 바는 생략.
+   */
+  applyBudget(recommendations, budget) {
+    const priorityOrder = { Essential: 0, Recommended: 1, Optional: 2 };
+    const hasBudget = Number.isFinite(budget) && budget > 0;
+
+    const sorted = [...recommendations].sort((a, b) => {
       const pa = priorityOrder[a.priority] ?? 3;
       const pb = priorityOrder[b.priority] ?? 3;
-      return pa !== pb ? pa - pb : a.prod.price - b.prod.price;
+      return pa !== pb ? pa - pb : (a.prod.price || 0) - (b.prod.price || 0);
     });
 
-    let remaining = kb.budget;
+    let remaining = hasBudget ? budget : Infinity;
+    let totalCost = 0;
     const affordable = [];
     const overBudget = [];
 
     for (const entry of sorted) {
-      if (entry.prod.price === 0) {
-        affordable.push({ ...entry, withinBudget: true });
-      } else if (remaining >= entry.prod.price) {
-        remaining -= entry.prod.price;
+      const price = entry.prod.price || 0;
+      if (!hasBudget || price === 0 || remaining >= price) {
+        if (price > 0 && hasBudget) remaining -= price;
+        totalCost += price;
         affordable.push({ ...entry, withinBudget: true });
       } else {
         overBudget.push({ ...entry, withinBudget: false });
@@ -161,9 +171,9 @@ var Reasoner = class Reasoner {
     return {
       affordable,
       overBudget,
-      remaining,
-      budget: kb.budget,
-      totalCost: kb.budget - remaining,
+      remaining: hasBudget ? remaining : null,
+      budget: hasBudget ? budget : null,
+      totalCost,
     };
   }
 

@@ -169,6 +169,22 @@ main {
   margin-bottom: 24px;
 }
 
+.form-grid-two {
+  grid-template-columns: repeat(2, 1fr);
+  margin-bottom: 12px;
+}
+
+.form-hint {
+  font-size: 0.85rem;
+  color: var(--primary-dark);
+  background: var(--primary-light);
+  border: 1px solid var(--primary-lighter);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  margin-bottom: 24px;
+  line-height: 1.5;
+}
+
 .form-group {
   display: flex;
   flex-direction: column;
@@ -952,6 +968,324 @@ footer {
 }
 
 /* =============================
+   예산 시나리오 패널
+   ============================= */
+.budget-scenarios {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  border-left: 4px solid var(--accent);
+}
+
+.scenarios-top {
+  display: flex;
+  gap: 18px;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.scenarios-top-text h3 {
+  font-size: 1.08rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+.scenarios-desc {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.total-cost-value {
+  color: var(--accent-dark);
+  font-weight: 800;
+  font-size: 1.05rem;
+  margin-left: 4px;
+}
+
+.budget-input-form {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+  flex-shrink: 0;
+}
+
+.budget-input-form input {
+  padding: 10px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 0.95rem;
+  min-width: 160px;
+  background: #FAFBFC;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.budget-input-form input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+  background: #fff;
+}
+
+.btn-scenario-add {
+  padding: 10px 18px;
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 0.92rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.15s, filter 0.15s;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.22);
+}
+
+.btn-scenario-add:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(79, 70, 229, 0.32);
+  filter: brightness(1.05);
+}
+
+/* 시나리오 탭 */
+.scenarios-tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.scenario-tab {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: flex-start;
+  padding: 10px 32px 10px 14px;
+  background: #FAFBFC;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.15s;
+  min-width: 140px;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+}
+
+.scenario-tab:hover {
+  border-color: var(--primary);
+  background: var(--primary-light);
+}
+
+.scenario-tab.active {
+  border-color: var(--primary);
+  background: var(--primary-light);
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.15);
+}
+
+.scenario-tab-label {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--text);
+  letter-spacing: -0.2px;
+}
+
+.scenario-tab.active .scenario-tab-label {
+  color: var(--primary-dark);
+}
+
+.scenario-tab-sub {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.scenario-remove {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  font-size: 1rem;
+  line-height: 1;
+  color: var(--text-subtle);
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 99px;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+
+.scenario-remove:hover {
+  background: var(--essential-bg);
+  color: var(--essential);
+}
+
+/* 활성 뷰 정보 */
+.active-scenario-info {
+  background: var(--surface-soft);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.active-view-label {
+  font-size: 0.92rem;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.active-view-label strong {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.view-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 99px;
+}
+
+.view-dot-all      { background: var(--accent); }
+.view-dot-scenario { background: var(--primary); }
+
+/* 비교 섹션 */
+.scenario-compare {
+  border-top: 1px dashed var(--border);
+  padding-top: 16px;
+}
+
+.compare-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.compare-header h4 {
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.compare-selects {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.compare-selects select {
+  padding: 7px 10px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  font-size: 0.88rem;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.compare-vs {
+  font-size: 0.82rem;
+  color: var(--text-subtle);
+  font-weight: 700;
+}
+
+.compare-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.compare-column {
+  background: #FAFBFC;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px;
+}
+
+.compare-column h5 {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.compare-badge {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 99px;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.compare-badge.added   { background: var(--success-bg); color: var(--success); }
+.compare-badge.removed { background: var(--essential-bg); color: var(--essential); }
+
+.compare-count {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.compare-hint {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+
+.compare-hint strong {
+  color: var(--text);
+}
+
+.compare-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.compare-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 7px 10px;
+  font-size: 0.85rem;
+}
+
+.compare-item-name {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.compare-item-price {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.compare-empty {
+  font-size: 0.82rem;
+  color: var(--text-subtle);
+  font-style: italic;
+  text-align: center;
+  padding: 10px;
+}
+
+/* =============================
    Responsive
    ============================= */
 @media (max-width: 640px) {
@@ -959,6 +1293,13 @@ footer {
   header h1 { font-size: 1.5rem; }
   .logo { width: 60px; height: 60px; font-size: 2rem; }
   .form-grid { grid-template-columns: 1fr; }
+  .form-grid-two { grid-template-columns: repeat(2, 1fr); }
+  .scenarios-top { flex-direction: column; gap: 12px; }
+  .budget-input-form { width: 100%; }
+  .budget-input-form input { flex: 1; min-width: 0; }
+  .scenario-tab { min-width: 0; flex: 1 1 calc(50% - 8px); }
+  .compare-grid { grid-template-columns: 1fr; }
+  .compare-selects { flex-wrap: wrap; }
   .checkbox-grid { grid-template-columns: repeat(2, 1fr); }
   .quarter-grid { grid-template-columns: repeat(2, 1fr); }
   .card { padding: 20px 16px; }

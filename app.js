@@ -1,12 +1,24 @@
 /**
  * app.js — 군입대 준비물 체크리스트 MVP (정적 사이트 버전)
  *
- * 서버 없이 브라우저에서 직접 온톨로지 추론 실행.
+ * 흐름:
+ *  1. 사용자가 필요 항목(신체/건강/상황)만 선택해 추천 리스트 생성
+ *  2. 전체 추천 리스트의 예상 총 비용을 보여줌
+ *  3. 가용 예산을 여러 번 입력 → 각 예산별 "시나리오" 저장
+ *  4. 두 시나리오를 비교해 추가/제외된 품목을 확인
+ *
  * ontology.js, reasoner.js 를 먼저 로드해야 함.
  */
 
 const reasoner = new Reasoner(ONTOLOGY);
 const STORAGE_KEY = "milchecklist:lastInput";
+
+// ── 전역 상태 ─────────────────────────────────────────────
+let baseItems = [];           // 예산 제약 없는 전체 추천 품목
+let baseMeta  = null;         // { bmi, bodyCondition, totalCost }
+let scenarios = [];           // [{ id, budget, affordable, overBudget, remaining, totalCost }]
+let activeView = "all";       // "all" 또는 scenario.id
+let nextScenarioId = 1;
 
 // ── 뷰 전환 ───────────────────────────────────────────────
 document.getElementById("backToForm").addEventListener("click", function () {
@@ -31,7 +43,6 @@ function collectUserInput() {
   return {
     height:     parseFloat(document.getElementById("height").value),
     weight:     parseFloat(document.getElementById("weight").value),
-    budget:     parseFloat(document.getElementById("budget").value),
     conditions,
     situations: selectedSituations,
     season,
@@ -42,7 +53,6 @@ function populateForm(input) {
   if (!input) return;
   if (Number.isFinite(input.height)) document.getElementById("height").value = input.height;
   if (Number.isFinite(input.weight)) document.getElementById("weight").value = input.weight;
-  if (Number.isFinite(input.budget)) document.getElementById("budget").value = input.budget;
 
   document.querySelectorAll('input[name="conditions"]').forEach(function (el) {
     el.checked = Array.isArray(input.conditions) && input.conditions.indexOf(el.value) !== -1;
@@ -82,31 +92,37 @@ function decodeState(s) {
   } catch (_) { return null; }
 }
 
+// ── 추천 실행 ─────────────────────────────────────────────
 function runRecommendation(input) {
   const situations = (input.situations || []).slice();
   if (input.season && situations.indexOf(input.season) === -1) {
     situations.push(input.season);
   }
 
+  // 예산 제약 없이 모든 추천을 구함
   const result = reasoner.reason({
     height:     input.height,
     weight:     input.weight,
-    budget:     input.budget,
+    budget:     null,
     conditions: input.conditions || [],
     situations: situations,
   });
 
-  renderResults({
-    ...result,
+  baseItems = [...result.affordable, ...result.overBudget];
+  baseMeta = {
     bmi:           result.bmi,
     bodyCondition: result.bodyCondition,
-    meta: {
-      categoryMeta:    CATEGORY_META,
-      conditionLabels: CONDITION_LABEL,
-      situationLabels: SITUATION_LABEL,
-      bodyLabels:      BODY_LABEL,
-    },
-  });
+    totalCost:     baseItems.reduce((s, e) => s + (e.prod.price || 0), 0),
+  };
+
+  // 폼을 다시 제출하면 시나리오 초기화
+  scenarios = [];
+  nextScenarioId = 1;
+  activeView = "all";
+
+  renderProfile();
+  renderScenariosPanel();
+  renderActiveView();
 
   document.getElementById("formSection").classList.add("hidden");
   document.getElementById("results").classList.remove("hidden");
@@ -119,6 +135,36 @@ document.getElementById("userForm").addEventListener("submit", function (e) {
   const input = collectUserInput();
   saveInput(input);
   runRecommendation(input);
+});
+
+// ── 예산 시나리오 추가 ───────────────────────────────────
+document.getElementById("budgetForm").addEventListener("submit", function (e) {
+  e.preventDefault();
+  const input = document.getElementById("budgetInput");
+  const budget = parseFloat(input.value);
+  if (!Number.isFinite(budget) || budget <= 0) return;
+
+  // 동일 예산 시나리오는 기존 것을 활성화만
+  const dup = scenarios.find((s) => s.budget === budget);
+  if (dup) {
+    activeView = dup.id;
+  } else {
+    const r = reasoner.applyBudget(baseItems, budget);
+    const scenario = {
+      id: nextScenarioId++,
+      budget,
+      affordable: r.affordable,
+      overBudget: r.overBudget,
+      remaining:  r.remaining,
+      totalCost:  r.totalCost,
+    };
+    scenarios.push(scenario);
+    activeView = scenario.id;
+  }
+
+  input.value = "";
+  renderScenariosPanel();
+  renderActiveView();
 });
 
 // ── 공유하기 ──────────────────────────────────────────────
@@ -158,33 +204,17 @@ document.getElementById("shareLink").addEventListener("click", function () {
   if (saved) populateForm(saved);
 })();
 
-// ── 결과 렌더링 ───────────────────────────────────────────
-function renderResults(result) {
-  const { affordable, overBudget, remaining, budget, totalCost,
-          bmi, bodyCondition, meta } = result;
-
-  const CAT_META  = meta?.categoryMeta    || {};
-  const COND_LBL  = meta?.conditionLabels  || {};
-  const SIT_LBL   = meta?.situationLabels  || {};
-  const BODY_LBL  = meta?.bodyLabels       || {};
-
-  renderProfile(bmi, bodyCondition, BODY_LBL, result);
-  renderBudgetBar(budget, totalCost, remaining);
-  renderChecklist([...affordable, ...overBudget], CAT_META, COND_LBL, SIT_LBL);
-  document.getElementById("budgetWarning").classList.toggle("hidden", overBudget.length === 0);
-}
-
-function renderProfile(bmi, bodyCondition, BODY_LBL, result) {
-  const allItems = [...(result.affordable || []), ...(result.overBudget || [])];
-  const essentialCount = allItems.filter(e => e.priority === "Essential").length;
-  const totalCount = allItems.length;
+// ── 렌더링: 프로필 ───────────────────────────────────────
+function renderProfile() {
+  const essentialCount = baseItems.filter((e) => e.priority === "Essential").length;
+  const totalCount = baseItems.length;
 
   document.getElementById("profileSummary").innerHTML = `
     <div class="profile-badges">
       <div class="profile-badge">
         <span class="profile-badge-label">BMI</span>
-        <span class="profile-badge-value">${bmi.toFixed(1)}</span>
-        <span class="profile-badge-desc">${BODY_LBL[bodyCondition] || "-"}</span>
+        <span class="profile-badge-value">${baseMeta.bmi.toFixed(1)}</span>
+        <span class="profile-badge-desc">${BODY_LABEL[baseMeta.bodyCondition] || "-"}</span>
       </div>
       <div class="profile-badge">
         <span class="profile-badge-label">필수 품목</span>
@@ -198,25 +228,180 @@ function renderProfile(bmi, bodyCondition, BODY_LBL, result) {
   `;
 }
 
-function renderBudgetBar(budget, totalCost, remaining) {
-  const percent = budget > 0 ? Math.min(Math.round((totalCost / budget) * 100), 100) : 0;
-  const isOver = remaining < 0;
+// ── 렌더링: 시나리오 패널 ────────────────────────────────
+function renderScenariosPanel() {
+  document.getElementById("totalCostDisplay").textContent =
+    baseMeta.totalCost.toLocaleString() + "원";
+  renderTabs();
+  renderCompareSection();
+}
 
-  document.getElementById("budgetSummary").innerHTML = `
-    <div class="budget-bar-wrap">
-      <div class="budget-bar">
-        <div class="budget-bar-fill ${isOver ? 'budget-over' : ''}" style="width:${percent}%"></div>
+function renderTabs() {
+  const container = document.getElementById("scenariosTabs");
+  const tabs = [
+    {
+      key: "all",
+      label: "전체 추천",
+      sub: baseItems.length + "개 · " + baseMeta.totalCost.toLocaleString() + "원",
+      removable: false,
+    },
+    ...scenarios.map((s) => ({
+      key: s.id,
+      label: s.budget.toLocaleString() + "원",
+      sub: s.affordable.length + "개 포함 · 잔액 " + s.remaining.toLocaleString() + "원",
+      removable: true,
+    })),
+  ];
+
+  container.innerHTML = tabs.map((t) => `
+    <button type="button" class="scenario-tab ${activeView === t.key ? "active" : ""}"
+            data-key="${t.key}" role="tab">
+      <span class="scenario-tab-label">${t.label}</span>
+      <span class="scenario-tab-sub">${t.sub}</span>
+      ${t.removable
+        ? `<span class="scenario-remove" data-remove="${t.key}" role="button" aria-label="시나리오 삭제">×</span>`
+        : ""}
+    </button>
+  `).join("");
+
+  container.querySelectorAll(".scenario-tab").forEach(function (btn) {
+    btn.addEventListener("click", function (e) {
+      if (e.target.classList.contains("scenario-remove")) return;
+      const key = btn.dataset.key;
+      activeView = key === "all" ? "all" : parseInt(key, 10);
+      renderTabs();
+      renderActiveView();
+    });
+  });
+  container.querySelectorAll(".scenario-remove").forEach(function (el) {
+    el.addEventListener("click", function (e) {
+      e.stopPropagation();
+      const id = parseInt(el.dataset.remove, 10);
+      scenarios = scenarios.filter((s) => s.id !== id);
+      if (activeView === id) activeView = "all";
+      renderScenariosPanel();
+      renderActiveView();
+    });
+  });
+}
+
+// ── 활성 뷰(전체 추천 또는 특정 시나리오) 렌더링 ──────────
+function renderActiveView() {
+  const infoEl = document.getElementById("activeScenarioInfo");
+
+  if (activeView === "all") {
+    infoEl.innerHTML = `
+      <div class="active-view-label">
+        <span class="view-dot view-dot-all"></span>
+        예산 제약 없이 <strong>추천된 전체 ${baseItems.length}개 품목</strong>을 보고 있어요.
       </div>
-      <span class="budget-text">
-        예산 <strong>${budget.toLocaleString()}원</strong> 중
-        <strong>${totalCost.toLocaleString()}원</strong> 예상
-        &nbsp;|&nbsp; 잔액 <strong>${remaining.toLocaleString()}원</strong>
-      </span>
+    `;
+    renderChecklist(baseItems);
+    document.getElementById("budgetWarning").classList.add("hidden");
+  } else {
+    const s = scenarios.find((x) => x.id === activeView);
+    if (!s) return;
+    const pct = Math.min(Math.round((s.totalCost / s.budget) * 100), 100);
+    infoEl.innerHTML = `
+      <div class="active-view-label">
+        <span class="view-dot view-dot-scenario"></span>
+        예산 <strong>${s.budget.toLocaleString()}원</strong> 시나리오 · 포함 ${s.affordable.length}개 / 제외 ${s.overBudget.length}개
+      </div>
+      <div class="budget-bar-wrap">
+        <div class="budget-bar">
+          <div class="budget-bar-fill" style="width:${pct}%"></div>
+        </div>
+        <span class="budget-text">
+          예산 <strong>${s.budget.toLocaleString()}원</strong> 중
+          <strong>${s.totalCost.toLocaleString()}원</strong> 사용 &nbsp;|&nbsp;
+          잔액 <strong>${s.remaining.toLocaleString()}원</strong>
+        </span>
+      </div>
+    `;
+    renderChecklist([...s.affordable, ...s.overBudget]);
+    document.getElementById("budgetWarning").classList.toggle("hidden", s.overBudget.length === 0);
+  }
+}
+
+// ── 렌더링: 비교 섹션 ────────────────────────────────────
+function renderCompareSection() {
+  const compareEl = document.getElementById("scenarioCompare");
+  if (scenarios.length < 2) {
+    compareEl.classList.add("hidden");
+    return;
+  }
+  compareEl.classList.remove("hidden");
+
+  const options = scenarios.map((s) =>
+    `<option value="${s.id}">${s.budget.toLocaleString()}원 시나리오</option>`
+  ).join("");
+
+  const selA = document.getElementById("compareA");
+  const selB = document.getElementById("compareB");
+  const prevA = parseInt(selA.value, 10);
+  const prevB = parseInt(selB.value, 10);
+
+  selA.innerHTML = options;
+  selB.innerHTML = options;
+
+  const hasA = scenarios.some((s) => s.id === prevA);
+  const hasB = scenarios.some((s) => s.id === prevB);
+  selA.value = hasA ? prevA : scenarios[scenarios.length - 2].id;
+  selB.value = hasB ? prevB : scenarios[scenarios.length - 1].id;
+
+  selA.onchange = renderCompareResult;
+  selB.onchange = renderCompareResult;
+  renderCompareResult();
+}
+
+function renderCompareResult() {
+  const idA = parseInt(document.getElementById("compareA").value, 10);
+  const idB = parseInt(document.getElementById("compareB").value, 10);
+  const a = scenarios.find((s) => s.id === idA);
+  const b = scenarios.find((s) => s.id === idB);
+  const container = document.getElementById("compareResult");
+  if (!a || !b) { container.innerHTML = ""; return; }
+
+  const aIds = new Set(a.affordable.map((e) => e.prod._id));
+  const bIds = new Set(b.affordable.map((e) => e.prod._id));
+  const onlyA = a.affordable.filter((e) => !bIds.has(e.prod._id));
+  const onlyB = b.affordable.filter((e) => !aIds.has(e.prod._id));
+
+  const renderList = (items) => {
+    if (items.length === 0) return '<p class="compare-empty">변동 없음</p>';
+    return '<ul class="compare-list">' + items.map((e) =>
+      `<li>
+        <span class="compare-item-name">${e.prod.productName}</span>
+        <span class="compare-item-price">${(e.prod.price || 0).toLocaleString()}원</span>
+      </li>`
+    ).join("") + '</ul>';
+  };
+
+  const labelA = a.budget.toLocaleString() + "원";
+  const labelB = b.budget.toLocaleString() + "원";
+
+  container.innerHTML = `
+    <div class="compare-grid">
+      <div class="compare-column compare-only-a">
+        <h5><span class="compare-badge removed">${labelA} 전용</span> <span class="compare-count">${onlyA.length}개</span></h5>
+        <p class="compare-hint">${labelB} 기준으로는 <strong>제외</strong>되는 품목</p>
+        ${renderList(onlyA)}
+      </div>
+      <div class="compare-column compare-only-b">
+        <h5><span class="compare-badge added">${labelB} 전용</span> <span class="compare-count">${onlyB.length}개</span></h5>
+        <p class="compare-hint">${labelA} 대비 <strong>추가</strong>되는 품목</p>
+        ${renderList(onlyB)}
+      </div>
     </div>
   `;
 }
 
-function renderChecklist(entries, CAT_META, COND_LBL, SIT_LBL) {
+// ── 체크리스트 렌더링 ────────────────────────────────────
+function renderChecklist(entries) {
+  const CAT_META = CATEGORY_META;
+  const COND_LBL = CONDITION_LABEL;
+  const SIT_LBL  = SITUATION_LABEL;
+
   var container = document.getElementById("resultCards");
   container.innerHTML = "";
 
