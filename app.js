@@ -418,6 +418,11 @@ function renderChecklist(entries) {
   var container = document.getElementById("resultCards");
   container.innerHTML = "";
 
+  var PRIORITY_RANK = { Essential: 0, Recommended: 1, Optional: 2 };
+  var rankOf = function (p) {
+    return PRIORITY_RANK[p] != null ? PRIORITY_RANK[p] : 3;
+  };
+
   // 카테고리별 그룹핑
   var groups = new Map();
   for (var i = 0; i < entries.length; i++) {
@@ -427,7 +432,35 @@ function renderChecklist(entries) {
     groups.get(catKey).push(entry);
   }
 
-  groups.forEach(function (items, catKey) {
+  // 각 카테고리 내부: 우선순위 → 예산초과 여부 → 가격 기준 정렬 (안정성 위해 보조키 포함)
+  groups.forEach(function (items) {
+    items.sort(function (a, b) {
+      var r = rankOf(a.priority) - rankOf(b.priority);
+      if (r !== 0) return r;
+      var wa = a.withinBudget === false ? 1 : 0;
+      var wb = b.withinBudget === false ? 1 : 0;
+      if (wa !== wb) return wa - wb;
+      return (b.prod.price || 0) - (a.prod.price || 0);
+    });
+  });
+
+  // 카테고리 순서: 최상위 우선순위 → Essential 개수 → Recommended 개수
+  var sortedCats = Array.from(groups.entries()).sort(function (a, b) {
+    var ai = a[1], bi = b[1];
+    var aMin = Math.min.apply(null, ai.map(function (e) { return rankOf(e.priority); }));
+    var bMin = Math.min.apply(null, bi.map(function (e) { return rankOf(e.priority); }));
+    if (aMin !== bMin) return aMin - bMin;
+    var aEss = ai.filter(function (e) { return e.priority === "Essential"; }).length;
+    var bEss = bi.filter(function (e) { return e.priority === "Essential"; }).length;
+    if (aEss !== bEss) return bEss - aEss;
+    var aRec = ai.filter(function (e) { return e.priority === "Recommended"; }).length;
+    var bRec = bi.filter(function (e) { return e.priority === "Recommended"; }).length;
+    return bRec - aRec;
+  });
+
+  sortedCats.forEach(function (pair) {
+    var catKey = pair[0];
+    var items  = pair[1];
     var meta = CAT_META[catKey] || { label: catKey, icon: "📦" };
     var section = document.createElement("div");
     section.className = "result-category";

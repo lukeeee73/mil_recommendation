@@ -206,6 +206,8 @@ main {
   outline: none;
   background: #FAFBFC;
   color: var(--text);
+  width: 100%;
+  min-width: 0;
 }
 
 .form-group input:hover {
@@ -1293,7 +1295,11 @@ footer {
   header h1 { font-size: 1.5rem; }
   .logo { width: 60px; height: 60px; font-size: 2rem; }
   .form-grid { grid-template-columns: 1fr; }
-  .form-grid-two { grid-template-columns: repeat(2, 1fr); }
+  .form-grid-two { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  /* iOS 자동 줌 방지 — 입력 폰트는 최소 16px */
+  .form-group input,
+  .budget-input-form input,
+  .compare-selects select { font-size: 16px; }
   .scenarios-top { flex-direction: column; gap: 12px; }
   .budget-input-form { width: 100%; }
   .budget-input-form input { flex: 1; min-width: 0; }
@@ -1314,4 +1320,15 @@ footer {
   .cat-subtotal { font-size: 0.78rem; }
   .item-name { font-size: 0.94rem; }
   .checklist-controls { padding: 6px 2px 2px; }
+}
+
+/* 초협소 화면(갤럭시 S8-, iPhone SE 세로 등)에서는 키/몸무게도 세로로 쌓아 가독성 확보 */
+@media (max-width: 400px) {
+  .form-grid-two { grid-template-columns: 1fr; gap: 12px; }
+  .profile-badges { grid-template-columns: 1fr; }
+  .quarter-grid { grid-template-columns: 1fr 1fr; }
+  .checkbox-grid { grid-template-columns: 1fr; }
+  .card { padding: 18px 14px; }
+  .item-header { flex-wrap: wrap; }
+  .item-badges { margin-left: auto; }
 }
