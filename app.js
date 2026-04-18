@@ -99,7 +99,7 @@ function runRecommendation(input) {
     situations.push(input.season);
   }
 
-  // 예산 제약 없이 모든 추천을 구함
+  // 예산 제약 없이 모든 추천을 구함 (로컬 즉시 실행)
   const result = reasoner.reason({
     height:     input.height,
     weight:     input.weight,
@@ -127,6 +127,79 @@ function runRecommendation(input) {
   document.getElementById("formSection").classList.add("hidden");
   document.getElementById("results").classList.remove("hidden");
   window.scrollTo({ top: 0, behavior: "smooth" });
+
+  // 백그라운드에서 네이버 실시간 데이터로 보강
+  fetchNaverEnrichment({
+    height:     input.height,
+    weight:     input.weight,
+    conditions: input.conditions || [],
+    situations: situations,
+  });
+}
+
+// ── 네이버 실시간 데이터 보강 ────────────────────────────
+function setNaverStatus(state) {
+  const el = document.getElementById("naverStatus");
+  if (!el) return;
+  el.className = "naver-status";
+  if (state === "loading") {
+    el.textContent = "⏳ 네이버 실시간 가격 불러오는 중...";
+    el.classList.add("naver-loading");
+  } else if (state === "success") {
+    el.textContent = "✓ 네이버 실시간 가격 반영됨";
+    el.classList.add("naver-success");
+    setTimeout(function () { el.classList.add("naver-fade"); }, 3000);
+  } else {
+    el.classList.add("hidden");
+  }
+}
+
+function fetchNaverEnrichment(serverInput) {
+  setNaverStatus("loading");
+
+  fetch("/api/recommend", {
+    method:  "POST",
+    headers: { "Content-Type": "application/json" },
+    body:    JSON.stringify(serverInput),
+  })
+    .then(function (res) {
+      if (!res.ok) throw new Error("server " + res.status);
+      return res.json();
+    })
+    .then(function (data) {
+      if (data.source !== "naver") {
+        // 서버는 응답했지만 Naver API 키가 없는 경우 → 폴백
+        setNaverStatus("hidden");
+        return;
+      }
+
+      const enrichedItems = [...(data.affordable || []), ...(data.overBudget || [])];
+      if (enrichedItems.length === 0) return;
+
+      // baseItems 를 Naver 데이터로 교체 (prod._id 기준 매핑)
+      const byId = new Map(enrichedItems.map((e) => [e.prod._id, e.prod]));
+      baseItems = baseItems.map(function (entry) {
+        const naverProd = byId.get(entry.prod._id);
+        return naverProd ? { ...entry, prod: naverProd } : entry;
+      });
+
+      baseMeta.totalCost = baseItems.reduce((s, e) => s + (e.prod.price || 0), 0);
+
+      // 기존 시나리오도 새 가격으로 재계산
+      scenarios = scenarios.map(function (s) {
+        const r = reasoner.applyBudget(baseItems, s.budget);
+        return { ...s, affordable: r.affordable, overBudget: r.overBudget,
+                 remaining: r.remaining, totalCost: r.totalCost };
+      });
+
+      renderProfile();
+      renderScenariosPanel();
+      renderActiveView();
+      setNaverStatus("success");
+    })
+    .catch(function () {
+      setNaverStatus("hidden");
+    });
 }
 
 // ── 폼 제출 ───────────────────────────────────────────────
@@ -567,15 +640,40 @@ function checklistItemHTML({ prod, priority, reasons, withinBudget }, COND_LBL, 
 
   const isPersonal = prod.priceRange === "개인 보유";
   const shopQuery = encodeURIComponent(prod.productName);
-  const shopLinkHtml = isPersonal
-    ? ""
-    : `<a class="shop-link" href="https://search.shopping.naver.com/search/all?query=${shopQuery}" target="_blank" rel="noopener noreferrer" title="네이버 쇼핑에서 검색">🛒 검색</a>`;
+
+  // Naver 실시간 데이터가 있으면 직접 구매 링크, 없으면 검색 링크
+  let shopLinkHtml = "";
+  if (!isPersonal) {
+    if (prod.isRealProduct && prod.link) {
+      shopLinkHtml = `<a class="shop-link shop-link-buy" href="${prod.link}" target="_blank" rel="noopener noreferrer">🛒 바로 구매</a>`;
+    } else {
+      shopLinkHtml = `<a class="shop-link" href="https://search.shopping.naver.com/search/all?query=${shopQuery}" target="_blank" rel="noopener noreferrer" title="네이버 쇼핑에서 검색">🛒 검색</a>`;
+    }
+  }
+
+  const thumbnailHtml = (prod.isRealProduct && prod.image)
+    ? `<a href="${prod.link || '#'}" target="_blank" rel="noopener noreferrer" class="item-thumbnail-link">
+         <img class="item-thumbnail" src="${prod.image}" alt="${prod.productName}" loading="lazy" />
+       </a>`
+    : "";
+
+  const mallHtml = (prod.isRealProduct && prod.mallName)
+    ? `<span class="mall-badge">${prod.mallName}</span>`
+    : "";
 
   const priorityClass = {
     Essential:   "priority-essential",
     Recommended: "priority-recommended",
     Optional:    "priority-optional",
   }[priority] || "priority-optional";
+
+  const priceDisplay = isPersonal
+    ? '<span class="badge badge-personal">개인 보유</span>'
+    : `<span class="item-price ${prod.isRealProduct ? "item-price-real" : ""}">${
+        prod.isRealProduct
+          ? prod.price.toLocaleString() + "원"
+          : (prod.priceRange || `약 ${prod.price.toLocaleString()}원`)
+      }</span>`;
 
   return `
     <div class="checklist-item ${priorityClass} ${withinBudget ? "" : "out-of-budget"}">
@@ -597,12 +695,11 @@ function checklistItemHTML({ prod, priority, reasons, withinBudget }, COND_LBL, 
         <div class="item-footer">
           <div class="item-meta">
             ${quantityHtml}
+            ${mallHtml}
           </div>
           <div class="item-actions">
-            ${isPersonal
-              ? '<span class="badge badge-personal">개인 보유</span>'
-              : `<span class="item-price">${prod.priceRange || `약 ${prod.price.toLocaleString()}원`}</span>`
-            }
+            ${thumbnailHtml}
+            ${priceDisplay}
             ${shopLinkHtml}
           </div>
         </div>

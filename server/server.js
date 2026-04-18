@@ -1,17 +1,10 @@
-/**
- * server.js — Express 백엔드 서버 (MVP)
- *
- * MVP 버전:
- *  - 네이버 API 연동 없음 (체크리스트 + 예상 가격대만 제공)
- *  - 추후 실제 제품 정보 연동 예정
- */
-
 require("dotenv").config();
 const express = require("express");
 const path    = require("path");
 
 const { ONTOLOGY } = require("../ontology.js");
 const { Reasoner, CATEGORY_META, CONDITION_LABEL, SITUATION_LABEL, BODY_LABEL } = require("../reasoner.js");
+const { enrichWithNaverData } = require("./productMapper.js");
 
 const app      = express();
 const PORT     = process.env.PORT || 3000;
@@ -24,35 +17,33 @@ app.use(express.static(path.join(__dirname, "..")));
  * POST /api/recommend
  *
  * 요청:
- *   {
- *     "height": 175, "weight": 70,
- *     "budget": 200000,
- *     "conditions": ["FlatFoot", "KneeIssue"],
- *     "situations": ["WinterEnlistment", "HasGirlfriend"]
- *   }
+ *   { "height": 175, "weight": 70, "conditions": [...], "situations": [...] }
+ *   budget 은 선택. 없으면 예산 제약 없이 전체 추천을 반환.
  *
- * 응답: 맞춤 체크리스트 + 예상 가격
+ * 응답: 네이버 실시간 가격 + 직접 구매 링크가 포함된 추천 결과
  */
-app.post("/api/recommend", (req, res) => {
+app.post("/api/recommend", async (req, res) => {
   try {
-    const { height, weight, budget, conditions, situations } = req.body;
+    const { height, weight, conditions, situations } = req.body;
 
-    if (!height || !weight || budget == null) {
-      return res.status(400).json({ error: "height, weight, budget 는 필수입니다." });
+    if (!height || !weight) {
+      return res.status(400).json({ error: "height, weight 는 필수입니다." });
     }
 
-    const result = reasoner.reason({
+    const staticResult = reasoner.reason({
       height:     parseFloat(height),
       weight:     parseFloat(weight),
-      budget:     parseFloat(budget),
+      budget:     null,
       conditions: Array.isArray(conditions) ? conditions : [],
       situations: Array.isArray(situations) ? situations : [],
     });
 
+    const enriched = await enrichWithNaverData(staticResult);
+
     res.json({
-      ...result,
-      bmi:           result.bmi,
-      bodyCondition: result.bodyCondition,
+      ...enriched,
+      bmi:           staticResult.bmi,
+      bodyCondition: staticResult.bodyCondition,
       meta: {
         categoryMeta:    CATEGORY_META,
         conditionLabels: CONDITION_LABEL,
@@ -67,7 +58,8 @@ app.post("/api/recommend", (req, res) => {
 });
 
 app.listen(PORT, () => {
+  const hasNaver = !!(process.env.NAVER_CLIENT_ID && process.env.NAVER_CLIENT_SECRET);
   console.log(`\n🪖  군입대 준비물 체크리스트 서버 실행 중`);
   console.log(`   http://localhost:${PORT}`);
-  console.log(`   MVP 모드: 체크리스트 + 예상 가격대 (실제 제품 연동 예정)\n`);
+  console.log(`   네이버 API: ${hasNaver ? "✓ 연동됨" : "✗ 미설정 (폴백 모드)"}\n`);
 });

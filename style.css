@@ -968,6 +968,87 @@ footer {
 }
 
 /* =============================
+   네이버 상태 표시
+   ============================= */
+.naver-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 99px;
+  transition: opacity 0.4s ease;
+}
+
+.naver-loading {
+  background: var(--primary-light);
+  color: var(--primary-dark);
+  border: 1px solid var(--primary-lighter);
+}
+
+.naver-success {
+  background: var(--success-bg);
+  color: var(--success);
+  border: 1px solid #6EE7B7;
+}
+
+.naver-fade {
+  opacity: 0;
+}
+
+/* =============================
+   아이템 썸네일 & 구매 버튼
+   ============================= */
+.item-thumbnail-link {
+  flex-shrink: 0;
+  display: inline-block;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  transition: box-shadow 0.15s;
+}
+
+.item-thumbnail-link:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+}
+
+.item-thumbnail {
+  width: 58px;
+  height: 58px;
+  object-fit: cover;
+  display: block;
+  background: var(--surface-soft);
+}
+
+.shop-link-buy {
+  background: linear-gradient(135deg, #03C75A, #02b350);
+  box-shadow: 0 2px 6px rgba(3, 199, 90, 0.25);
+}
+
+.shop-link-buy:hover {
+  background: linear-gradient(135deg, #02b350, #019a43);
+  box-shadow: 0 4px 12px rgba(3, 199, 90, 0.35);
+}
+
+.item-price-real {
+  color: #E84118;
+  font-weight: 800;
+  font-size: 0.98rem;
+}
+
+.mall-badge {
+  display: inline-block;
+  font-size: 0.7rem;
+  padding: 2px 8px;
+  background: var(--surface-soft);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+/* =============================
    예산 시나리오 패널
    ============================= */
 .budget-scenarios {

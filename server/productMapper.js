@@ -24,37 +24,20 @@ const cache = require("./cache.js");
 async function enrichWithNaverData(staticResult) {
   const allEntries = [...staticResult.affordable, ...staticResult.overBudget];
 
-  // 모든 제품을 병렬로 네이버 검색 (Promise.all = 동시에 여러 API 호출)
   const enrichedEntries = await Promise.all(
     allEntries.map((entry) => enrichSingleProduct(entry))
   );
 
-  // 예산 내/초과 재분류 (네이버 실제 가격이 다를 수 있으므로 재계산)
-  let remaining = staticResult.budget;
-  const affordable = [];
-  const overBudget = [];
-
-  // 우선도 순서 유지 (Essential 먼저)
-  const priorityOrder = { Essential: 0, Recommended: 1, Optional: 2 };
-  enrichedEntries.sort((a, b) =>
-    (priorityOrder[a.priority] ?? 3) - (priorityOrder[b.priority] ?? 3)
-  );
-
-  for (const entry of enrichedEntries) {
-    if (remaining >= entry.prod.price) {
-      remaining -= entry.prod.price;
-      affordable.push({ ...entry, withinBudget: true });
-    } else {
-      overBudget.push({ ...entry, withinBudget: false });
-    }
-  }
+  // 예산이 없으면 전체를 affordable 로 반환 (클라이언트가 예산 필터 담당)
+  const totalCost = enrichedEntries.reduce((s, e) => s + (e.prod.price || 0), 0);
 
   return {
     ...staticResult,
-    affordable,
-    overBudget,
-    remaining,
-    totalCost: staticResult.budget - remaining,
+    affordable: enrichedEntries.map((e) => ({ ...e, withinBudget: true })),
+    overBudget: [],
+    remaining:  null,
+    budget:     null,
+    totalCost,
     source: process.env.NAVER_CLIENT_ID ? "naver" : "fallback",
   };
 }
