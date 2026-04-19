@@ -1,35 +1,39 @@
 /**
- * productMapper.js — 온톨로지 개체 ↔ 네이버 쇼핑 결과 변환
+ * productMapper.js — 온톨로지 개체 ↔ 쇼핑 플랫폼(네이버·쿠팡) 결과 변환
  *
  * 역할:
  *  1. 추론 결과(온톨로지 개체 기반)의 각 추천 제품에 대해
- *     searchKeyword로 네이버 쇼핑 API를 호출
- *  2. 반환된 실제 제품 정보(이름·가격·링크·이미지)로 교체
- *  3. API 실패 시 원래 온톨로지 데이터로 자연스럽게 폴백(fallback)
+ *     네이버 쇼핑 API 와 쿠팡 파트너스 API 를 병렬 호출
+ *  2. 각 플랫폼이 반환한 실제 제품 정보(이름·가격·이미지·링크·판매처)를
+ *     `naverHero`, `coupangHero` 라는 별개 필드로 entry 에 부착
+ *  3. 예산 재분류용 `prod.price` 는 실제 최저가(두 플랫폼 중 더 싼 쪽)로 갱신
+ *  4. 두 플랫폼 모두 실패해도 온톨로지 정적 데이터로 자연스럽게 폴백
  *
- * 핵심 개념: "온톨로지 = 개념 정의", "네이버 API = 실제 판매 제품"
- * productMapper는 개념과 실제 제품을 연결하는 다리 역할
+ * 핵심 개념: "온톨로지 = 개념 정의", "네이버·쿠팡 API = 실제 판매 제품"
  */
 
 const { searchNaverShopping } = require("./naverApi.js");
-const cache = require("./cache.js");
+const { searchCoupang }       = require("./coupangApi.js");
+const cache                   = require("./cache.js");
+
+const NAVER_TTL   = 60 * 60 * 1000; // 1시간
+const COUPANG_TTL = 60 * 60 * 1000; // 1시간
 
 /**
- * 추론 결과 전체를 실제 네이버 제품 데이터로 보강
+ * 추론 결과 전체를 실제 판매 데이터로 보강
  *
  * @param {{ affordable: Array, overBudget: Array, remaining: number, budget: number, totalCost: number }} staticResult
- *   - reasoner.reason()이 반환한 정적 추론 결과
- * @returns {Promise<object>} 네이버 실제 데이터로 교체된 결과
+ * @returns {Promise<object>} 네이버/쿠팡 hero 포함 결과
  */
 async function enrichWithNaverData(staticResult) {
   const allEntries = [...staticResult.affordable, ...staticResult.overBudget];
 
-  // 모든 제품을 병렬로 네이버 검색 (Promise.all = 동시에 여러 API 호출)
+  // 모든 제품을 병렬로 두 플랫폼에 검색
   const enrichedEntries = await Promise.all(
     allEntries.map((entry) => enrichSingleProduct(entry))
   );
 
-  // 예산 내/초과 재분류 (네이버 실제 가격이 다를 수 있으므로 재계산)
+  // 예산 내/초과 재분류 (실제 가격이 다를 수 있으므로 재계산)
   let remaining = staticResult.budget;
   const affordable = [];
   const overBudget = [];
@@ -55,74 +59,116 @@ async function enrichWithNaverData(staticResult) {
     overBudget,
     remaining,
     totalCost: staticResult.budget - remaining,
-    source: process.env.NAVER_CLIENT_ID ? "naver" : "fallback",
+    source: {
+      naver:   !!process.env.NAVER_CLIENT_ID,
+      coupang: !!process.env.COUPANG_ACCESS_KEY,
+    },
   };
 }
 
 /**
- * 개별 제품 하나를 네이버 데이터로 보강
+ * 개별 제품 하나를 네이버·쿠팡 데이터로 보강
+ * 플랫폼별 캐시 → 실패는 조용히 null (다음 호출 때 재시도)
  */
 async function enrichSingleProduct(entry) {
   const { prod } = entry;
   const keyword = prod.searchKeyword || prod.productName;
+
+  const [naverHero, coupangHero] = await Promise.all([
+    fetchNaverHero(keyword, prod),
+    fetchCoupangHero(keyword),
+  ]);
+
+  // 예산 계산에 쓸 대표가: 두 플랫폼 중 더 싼 쪽. 둘 다 없으면 온톨로지 가격 유지.
+  const heroPrices = [naverHero?.price, coupangHero?.price].filter(
+    (p) => Number.isFinite(p) && p > 0
+  );
+  const effectivePrice = heroPrices.length > 0 ? Math.min(...heroPrices) : prod.price;
+
+  const enrichedProd = {
+    ...prod,
+    price: effectivePrice,
+    isRealProduct: !!(naverHero || coupangHero),
+  };
+
+  return { ...entry, prod: enrichedProd, naverHero, coupangHero };
+}
+
+async function fetchNaverHero(keyword, originalProd) {
   const cacheKey = `naver:${keyword}`;
+  const cached   = cache.get(cacheKey);
+  if (cached !== null) return cached; // null 은 "미 캐시" / 객체는 히트
 
-  // 1. 캐시 확인 (이미 검색한 결과면 바로 반환)
-  const cached = cache.get(cacheKey);
-  if (cached) {
-    return { ...entry, prod: cached };
-  }
-
-  // 2. 네이버 API 호출
   try {
     const result = await searchNaverShopping(keyword, 1);
-
     if (result.items && result.items.length > 0) {
-      const naverProd = mapNaverItemToProduct(result.items[0], prod);
-      cache.set(cacheKey, naverProd); // 1시간 캐시
-      return { ...entry, prod: naverProd };
+      const hero = mapNaverItemToProduct(result.items[0], originalProd);
+      cache.set(cacheKey, hero, NAVER_TTL);
+      return hero;
     }
   } catch (err) {
-    // API 키 없거나 호출 실패 → 폴백 (조용히 원본 유지)
     if (err.message !== "NAVER_API_KEY_MISSING") {
       console.warn(`[productMapper] Naver API 실패 (${keyword}):`, err.message);
     }
   }
+  return null;
+}
 
-  // 3. 폴백: 원래 온톨로지 제품 데이터 그대로 사용
-  return entry;
+async function fetchCoupangHero(keyword) {
+  const cacheKey = `coupang:${keyword}`;
+  const cached   = cache.get(cacheKey);
+  if (cached !== null) return cached;
+
+  try {
+    const items = await searchCoupang(keyword, 1);
+    if (items && items.length > 0) {
+      const hero = mapCoupangItemToProduct(items[0]);
+      cache.set(cacheKey, hero, COUPANG_TTL);
+      return hero;
+    }
+  } catch (err) {
+    if (err.message !== "COUPANG_API_KEY_MISSING") {
+      console.warn(`[productMapper] Coupang API 실패 (${keyword}):`, err.message);
+    }
+  }
+  return null;
 }
 
 /**
- * 네이버 API 응답 아이템 → 온톨로지 제품 형식으로 변환
- *
- * 네이버 응답 예시:
- *   { title: "<b>군화</b> 깔창", lprice: "7500", link: "https://...", image: "https://..." }
- *
- * → 우리 형식:
- *   { productName: "군화 깔창", price: 7500, link: "...", image: "...", isRealProduct: true }
+ * 네이버 API 응답 아이템 → hero 객체
+ * 네이버는 title 에 <b> 태그를 포함하므로 제거 필요.
  */
 function mapNaverItemToProduct(naverItem, originalProd) {
-  // HTML 태그 제거: "<b>군화</b> 깔창" → "군화 깔창"
   const cleanName = naverItem.title.replace(/<[^>]+>/g, "");
-
-  // 최저가 파싱 (네이버는 문자열로 반환)
-  const price = parseInt(naverItem.lprice, 10);
+  const price     = parseInt(naverItem.lprice, 10);
 
   return {
-    // 온톨로지 메타데이터는 그대로 유지 (type, priority, conditions 등)
-    ...originalProd,
+    platform:    "naver",
+    productName: cleanName,
+    price:       Number.isFinite(price) ? price : originalProd.price,
+    link:        naverItem.link,
+    image:       naverItem.image,
+    mallName:    naverItem.mallName || "네이버쇼핑",
+    brand:       naverItem.brand || null,
+  };
+}
 
-    // 네이버 실제 데이터로 덮어쓰기
-    productName:   cleanName,
-    price:         isNaN(price) ? originalProd.price : price,
+/**
+ * 쿠팡 Partners API 아이템 → hero 객체
+ * Partners 는 별점/후기 수를 반환하지 않으므로 link 에만 의존.
+ */
+function mapCoupangItemToProduct(item) {
+  const rocketLabel = item.isRocket ? "로켓배송" : "";
 
-    // 네이버에서 추가된 필드
-    link:          naverItem.link,
-    image:         naverItem.image,
-    mallName:      naverItem.mallName || "네이버쇼핑",
-    brand:         naverItem.brand || null,
-    isRealProduct: true,  // 실제 판매 제품임을 표시
+  return {
+    platform:    "coupang",
+    productName: item.productName,
+    price:       Number.isFinite(item.productPrice) ? item.productPrice : 0,
+    link:        item.productUrl,
+    image:       item.productImage,
+    mallName:    ["쿠팡", rocketLabel].filter(Boolean).join(" · "),
+    isRocket:    !!item.isRocket,
+    isFreeShipping: !!item.isFreeShipping,
   };
 }
 
