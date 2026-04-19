@@ -107,7 +107,7 @@ async function runRecommendation(input) {
     situations: situations,
   };
 
-  // 서버(/api/recommend)로 네이버 쇼핑 보강 시도, 실패 시 클라이언트 추론으로 폴백
+  // 서버(/api/recommend)로 네이버·쿠팡 보강 시도, 실패 시 클라이언트 추론으로 폴백
   let result;
   try {
     const res = await fetch("/api/recommend", {
@@ -120,6 +120,9 @@ async function runRecommendation(input) {
   } catch (_) {
     result = reasoner.reason(payload);
   }
+
+  // 서버 보강 상태(네이버/쿠팡 각각 ON/OFF)를 전역에 기록 → 카드 렌더에서 참조
+  window.__enrichMode = (result && result.source) || { naver: false, coupang: false };
 
   baseItems = [...result.affordable, ...result.overBudget];
   baseMeta = {
@@ -566,7 +569,7 @@ function toggleCategory(header) {
   syncToggleAllButton();
 }
 
-function checklistItemHTML({ prod, priority, reasons, withinBudget }, COND_LBL, SIT_LBL) {
+function checklistItemHTML({ prod, priority, reasons, withinBudget, naverHero, coupangHero }, COND_LBL, SIT_LBL) {
   const PRIORITY_BADGE = {
     Essential:   '<span class="badge badge-essential">필수</span>',
     Recommended: '<span class="badge badge-recommended">추천</span>',
@@ -612,10 +615,48 @@ function checklistItemHTML({ prod, priority, reasons, withinBudget }, COND_LBL, 
     : "";
 
   const isPersonal = prod.priceRange === "개인 보유";
-  const shopQuery = encodeURIComponent(prod.productName);
-  const shopLinkHtml = isPersonal
+
+  // 두 플랫폼 모두 결과가 있으면 더 싼 쪽에 "최저가" 배지 (동률이면 둘 다)
+  const heroPrices = [naverHero && naverHero.price, coupangHero && coupangHero.price]
+    .filter((p) => Number.isFinite(p) && p > 0);
+  const minPrice = heroPrices.length > 0 ? Math.min(...heroPrices) : null;
+
+  const renderHero = (hero, reviewLabel) => {
+    if (!hero) return "";
+    const isLowest   = minPrice !== null && hero.price === minPrice;
+    const safeName   = String(hero.productName || prod.productName);
+    const safeMall   = String(hero.mallName || "");
+    const imageHtml  = hero.image
+      ? `<img class="compare-hero-img" src="${hero.image}" alt="" loading="lazy">`
+      : '<div class="compare-hero-img compare-hero-img-placeholder"></div>';
+    return `
+      <div class="compare-hero compare-hero-${hero.platform}">
+        ${imageHtml}
+        <div class="compare-hero-info">
+          <div class="compare-mall">${safeMall}</div>
+          <a class="compare-hero-link" href="${hero.link}" target="_blank" rel="noopener noreferrer">${safeName}</a>
+          <div class="compare-price">
+            <strong>${hero.price.toLocaleString()}원</strong>
+            ${isLowest ? '<span class="lowest-badge">최저가</span>' : ""}
+          </div>
+          <a class="review-link" href="${hero.link}" target="_blank" rel="noopener noreferrer">${reviewLabel} →</a>
+        </div>
+      </div>
+    `;
+  };
+
+  const heroesHtml = isPersonal
     ? ""
-    : `<a class="shop-link" href="https://search.shopping.naver.com/search/all?query=${shopQuery}" target="_blank" rel="noopener noreferrer" title="네이버 쇼핑에서 검색">🛒 검색</a>`;
+    : renderHero(naverHero, "후기·가격비교 보기") + renderHero(coupangHero, "쿠팡에서 후기 보기");
+
+  const platforms = (window.buildPlatformLinks || function () { return { naver: "#", coupang: "#" }; })(prod.productName);
+  const compareRowHtml = isPersonal
+    ? ""
+    : `
+      <div class="compare-platforms" aria-label="쇼핑몰에서 검색">
+        <a class="platform-link platform-naver"   href="${platforms.naver}"   target="_blank" rel="noopener noreferrer">네이버에서 검색</a>
+        <a class="platform-link platform-coupang" href="${platforms.coupang}" target="_blank" rel="noopener noreferrer">쿠팡에서 검색</a>
+      </div>`;
 
   const priorityClass = {
     Essential:   "priority-essential",
@@ -649,9 +690,10 @@ function checklistItemHTML({ prod, priority, reasons, withinBudget }, COND_LBL, 
               ? '<span class="badge badge-personal">개인 보유</span>'
               : `<span class="item-price">${prod.priceRange || `약 ${prod.price.toLocaleString()}원`}</span>`
             }
-            ${shopLinkHtml}
           </div>
         </div>
+        ${heroesHtml}
+        ${compareRowHtml}
       </div>
     </div>
   `;

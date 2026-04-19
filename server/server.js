@@ -1,9 +1,8 @@
 /**
- * server.js — Express 백엔드 서버 (MVP)
+ * server.js — Express 백엔드 서버
  *
- * MVP 버전:
- *  - 네이버 API 연동 없음 (체크리스트 + 예상 가격대만 제공)
- *  - 추후 실제 제품 정보 연동 예정
+ *  - 정적 추론(ontology + reasoner) 결과를 네이버 쇼핑 / 쿠팡 Partners API 로 보강
+ *  - 각 API 키가 없거나 호출 실패 시 조용히 폴백 (정적 데이터 유지)
  */
 
 require("dotenv").config();
@@ -12,6 +11,7 @@ const path    = require("path");
 
 const { ONTOLOGY } = require("../ontology.js");
 const { Reasoner, CATEGORY_META, CONDITION_LABEL, SITUATION_LABEL, BODY_LABEL } = require("../reasoner.js");
+const { enrichWithNaverData } = require("./productMapper.js");
 
 const app      = express();
 const PORT     = process.env.PORT || 3000;
@@ -31,9 +31,9 @@ app.use(express.static(path.join(__dirname, "..")));
  *     "situations": ["WinterEnlistment", "HasGirlfriend"]
  *   }
  *
- * 응답: 맞춤 체크리스트 + 예상 가격
+ * 응답: 맞춤 체크리스트 + 각 품목에 naverHero / coupangHero 부착
  */
-app.post("/api/recommend", (req, res) => {
+app.post("/api/recommend", async (req, res) => {
   try {
     const { height, weight, budget, conditions, situations } = req.body;
 
@@ -49,8 +49,13 @@ app.post("/api/recommend", (req, res) => {
       situations: Array.isArray(situations) ? situations : [],
     });
 
+    const enriched = await enrichWithNaverData(result).catch((err) => {
+      console.warn("[/api/recommend] 보강 실패, 폴백:", err.message);
+      return result;
+    });
+
     res.json({
-      ...result,
+      ...enriched,
       bmi:           result.bmi,
       bodyCondition: result.bodyCondition,
       meta: {
@@ -67,7 +72,10 @@ app.post("/api/recommend", (req, res) => {
 });
 
 app.listen(PORT, () => {
+  const naverOn   = !!process.env.NAVER_CLIENT_ID;
+  const coupangOn = !!process.env.COUPANG_ACCESS_KEY;
   console.log(`\n🪖  군입대 준비물 체크리스트 서버 실행 중`);
   console.log(`   http://localhost:${PORT}`);
-  console.log(`   MVP 모드: 체크리스트 + 예상 가격대 (실제 제품 연동 예정)\n`);
+  console.log(`   네이버 쇼핑 API: ${naverOn ? "ON" : "OFF (딥링크 폴백)"}`);
+  console.log(`   쿠팡 Partners API: ${coupangOn ? "ON" : "OFF (딥링크 폴백)"}\n`);
 });
