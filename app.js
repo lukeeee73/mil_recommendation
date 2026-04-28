@@ -621,59 +621,58 @@ function checklistItemHTML({ prod, priority, reasons, withinBudget, naverHero, c
     .filter((p) => Number.isFinite(p) && p > 0);
   const minPrice = heroPrices.length > 0 ? Math.min(...heroPrices) : null;
 
-  const renderHero = (hero, reviewLabel) => {
-    if (!hero) return "";
-    const isLowest   = minPrice !== null && hero.price === minPrice;
-    const safeName   = String(hero.productName || prod.productName);
-    const safeMall   = String(hero.mallName || "");
-    const imageHtml  = hero.image
-      ? `<img class="compare-hero-img" src="${hero.image}" alt="" loading="lazy">`
-      : '<div class="compare-hero-img compare-hero-img-placeholder"></div>';
-    return `
-      <div class="compare-hero compare-hero-${hero.platform}">
-        ${imageHtml}
-        <div class="compare-hero-info">
-          <div class="compare-mall">${safeMall}</div>
-          <a class="compare-hero-link" href="${hero.link}" target="_blank" rel="noopener noreferrer">${safeName}</a>
-          <div class="compare-price">
-            <strong>${hero.price.toLocaleString()}원</strong>
-            ${isLowest ? '<span class="lowest-badge">최저가</span>' : ""}
-          </div>
-          <a class="review-link" href="${hero.link}" target="_blank" rel="noopener noreferrer">${reviewLabel} →</a>
-        </div>
-      </div>
-    `;
-  };
-
-  const heroesHtml = isPersonal
-    ? ""
-    : renderHero(naverHero, "후기·가격비교 보기") + renderHero(coupangHero, "쿠팡에서 후기 보기");
-
-  // 스크레이프된 후기 — 외부 출처 텍스트이므로 반드시 escape
   const escapeHtml = (s) => String(s)
     .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 
-  const renderReviews = (rev) => {
-    if (!rev) return "";
-    const hasAny = rev.rating || rev.count || (rev.snippets && rev.snippets.length);
-    if (!hasAny) return "";
-    const star = rev.rating ? `<span class="review-rating">★ ${rev.rating.toFixed(1)}</span>` : "";
-    const count = rev.count ? `<span class="review-count">후기 ${rev.count.toLocaleString()}개</span>` : "";
-    const snippets = (rev.snippets || []).slice(0, 2).map(
-      (s) => `<li>"${escapeHtml(s)}"</li>`
-    ).join("");
+  const renderProductCard = (hero, isLowest, rev) => {
+    if (!hero) return "";
+    const isCoupang = hero.platform === "coupang";
+    const safeName  = escapeHtml(hero.productName || prod.productName);
+    const safeMall  = escapeHtml(hero.mallName || (isCoupang ? "쿠팡" : "네이버쇼핑"));
+    const chipLabel = isCoupang ? "쿠팡" : "네이버";
+
+    const imageHtml = hero.image
+      ? `<img class="product-card-img" src="${hero.image}" alt="${safeName}" loading="lazy">`
+      : `<div class="product-card-img product-card-img-empty"></div>`;
+
+    const ratingHtml = (rev && rev.rating)
+      ? `<span class="product-rating">★ ${rev.rating.toFixed(1)}</span>` : "";
+    const countHtml = (rev && rev.count)
+      ? `<span class="product-review-count">${rev.count.toLocaleString()}개 리뷰</span>` : "";
+    const rocketHtml = hero.isRocket
+      ? `<span class="rocket-badge">로켓배송</span>` : "";
+
     return `
-      <div class="review-block">
-        <div class="review-meta">${star}${count}</div>
-        ${snippets ? `<ul class="review-snippets">${snippets}</ul>` : ""}
-      </div>
+      <a class="product-card product-card-${hero.platform}" href="${hero.link}" target="_blank" rel="noopener noreferrer">
+        <div class="product-card-img-wrap">
+          ${imageHtml}
+          <span class="platform-chip platform-chip-${hero.platform}">${chipLabel}</span>
+          ${isLowest ? '<span class="product-lowest">최저가</span>' : ""}
+        </div>
+        <div class="product-card-body">
+          <div class="product-card-meta">${safeMall}${ratingHtml}${countHtml}${rocketHtml}</div>
+          <p class="product-card-name">${safeName}</p>
+          <div class="product-card-price">${hero.price.toLocaleString()}원</div>
+          <div class="product-card-cta">바로 구매 →</div>
+        </div>
+      </a>
     `;
   };
-  const reviewsHtml = isPersonal ? "" : renderReviews(reviews);
+
+  const heroesHtml = isPersonal ? "" : (() => {
+    const naverCard   = renderProductCard(naverHero,   naverHero   && naverHero.price   === minPrice, reviews);
+    const coupangCard = renderProductCard(coupangHero, coupangHero && coupangHero.price === minPrice, null);
+    if (!naverCard && !coupangCard) return "";
+    const snippets = (reviews && reviews.snippets && reviews.snippets.length)
+      ? `<div class="review-quotes">${reviews.snippets.slice(0, 2)
+          .map((s) => `<span class="review-quote">"${escapeHtml(s)}"</span>`).join("")}</div>`
+      : "";
+    return `<div class="product-showcase"><div class="product-grid">${naverCard}${coupangCard}</div>${snippets}</div>`;
+  })();
 
   const platforms = (window.buildPlatformLinks || function () { return { naver: "#", coupang: "#" }; })(prod.productName);
-  const compareRowHtml = isPersonal
+  const compareRowHtml = isPersonal || naverHero || coupangHero
     ? ""
     : `
       <div class="compare-platforms" aria-label="쇼핑몰에서 검색">
@@ -716,7 +715,6 @@ function checklistItemHTML({ prod, priority, reasons, withinBudget, naverHero, c
           </div>
         </div>
         ${heroesHtml}
-        ${reviewsHtml}
         ${compareRowHtml}
       </div>
     </div>
