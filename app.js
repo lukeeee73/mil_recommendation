@@ -569,7 +569,7 @@ function toggleCategory(header) {
   syncToggleAllButton();
 }
 
-function checklistItemHTML({ prod, priority, reasons, withinBudget, naverHero, coupangHero }, COND_LBL, SIT_LBL) {
+function checklistItemHTML({ prod, priority, reasons, withinBudget, naverHero, coupangHero, reviews }, COND_LBL, SIT_LBL) {
   const PRIORITY_BADGE = {
     Essential:   '<span class="badge badge-essential">필수</span>',
     Recommended: '<span class="badge badge-recommended">추천</span>',
@@ -649,6 +649,29 @@ function checklistItemHTML({ prod, priority, reasons, withinBudget, naverHero, c
     ? ""
     : renderHero(naverHero, "후기·가격비교 보기") + renderHero(coupangHero, "쿠팡에서 후기 보기");
 
+  // 스크레이프된 후기 — 외부 출처 텍스트이므로 반드시 escape
+  const escapeHtml = (s) => String(s)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+
+  const renderReviews = (rev) => {
+    if (!rev) return "";
+    const hasAny = rev.rating || rev.count || (rev.snippets && rev.snippets.length);
+    if (!hasAny) return "";
+    const star = rev.rating ? `<span class="review-rating">★ ${rev.rating.toFixed(1)}</span>` : "";
+    const count = rev.count ? `<span class="review-count">후기 ${rev.count.toLocaleString()}개</span>` : "";
+    const snippets = (rev.snippets || []).slice(0, 2).map(
+      (s) => `<li>"${escapeHtml(s)}"</li>`
+    ).join("");
+    return `
+      <div class="review-block">
+        <div class="review-meta">${star}${count}</div>
+        ${snippets ? `<ul class="review-snippets">${snippets}</ul>` : ""}
+      </div>
+    `;
+  };
+  const reviewsHtml = isPersonal ? "" : renderReviews(reviews);
+
   const platforms = (window.buildPlatformLinks || function () { return { naver: "#", coupang: "#" }; })(prod.productName);
   const compareRowHtml = isPersonal
     ? ""
@@ -693,6 +716,7 @@ function checklistItemHTML({ prod, priority, reasons, withinBudget, naverHero, c
           </div>
         </div>
         ${heroesHtml}
+        ${reviewsHtml}
         ${compareRowHtml}
       </div>
     </div>

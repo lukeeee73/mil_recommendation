@@ -1007,6 +1007,42 @@ main {
 
 .review-link:hover { text-decoration: underline; }
 
+.review-block {
+  margin-top: 8px;
+  padding: 8px 10px;
+  background: #faf8f3;
+  border: 1px solid #e8e3d6;
+  border-radius: 6px;
+  font-size: 0.82rem;
+}
+
+.review-meta {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 4px;
+  color: #6b5d3f;
+  font-weight: 600;
+}
+
+.review-rating { color: #d97706; }
+.review-count  { color: #6b5d3f; font-weight: 500; }
+
+.review-snippets {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.review-snippets li {
+  color: var(--text);
+  line-height: 1.45;
+  font-size: 0.8rem;
+}
+
 .compare-platforms {
   display: flex;
   gap: 8px;

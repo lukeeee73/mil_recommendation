@@ -14,10 +14,18 @@
 
 const { searchNaverShopping } = require("./naverApi.js");
 const { searchCoupang }       = require("./coupangApi.js");
+const { fetchReviews }        = require("./reviewScraper.js");
 const cache                   = require("./cache.js");
 
 const NAVER_TTL   = 60 * 60 * 1000; // 1시간
 const COUPANG_TTL = 60 * 60 * 1000; // 1시간
+
+// 후기 스크레이프는 ENABLE_REVIEW_SCRAPE=1 이거나 JINA_API_KEY 가 있을 때만 활성화.
+// 익명 호출은 분당 20건 제한 — 카드 수가 많으면 빠르게 소진되므로 기본 OFF.
+const REVIEW_SCRAPE_ENABLED =
+  !!process.env.JINA_API_KEY ||
+  process.env.ENABLE_REVIEW_SCRAPE === "1" ||
+  process.env.ENABLE_REVIEW_SCRAPE === "true";
 
 /**
  * 추론 결과 전체를 실제 판매 데이터로 보강
@@ -62,6 +70,7 @@ async function enrichWithNaverData(staticResult) {
     source: {
       naver:   !!process.env.NAVER_CLIENT_ID,
       coupang: !!process.env.COUPANG_ACCESS_KEY,
+      reviews: REVIEW_SCRAPE_ENABLED,
     },
   };
 }
@@ -91,7 +100,17 @@ async function enrichSingleProduct(entry) {
     isRealProduct: !!(naverHero || coupangHero),
   };
 
-  return { ...entry, prod: enrichedProd, naverHero, coupangHero };
+  // 후기 스크레이프: 네이버 hero 우선(쿠팡은 봇 차단으로 거의 실패).
+  // 비용을 아끼기 위해 우선순위 Essential·Recommended 만 보강.
+  const reviewSource = naverHero?.link || coupangHero?.link || null;
+  const shouldFetchReview =
+    REVIEW_SCRAPE_ENABLED &&
+    reviewSource &&
+    (entry.priority === "Essential" || entry.priority === "Recommended");
+
+  const reviews = shouldFetchReview ? await fetchReviews(reviewSource) : null;
+
+  return { ...entry, prod: enrichedProd, naverHero, coupangHero, reviews };
 }
 
 async function fetchNaverHero(keyword, originalProd) {
